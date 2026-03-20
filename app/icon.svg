@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="sunrise" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0b6e4f" />
+      <stop offset="60%" stop-color="#1d8a74" />
+      <stop offset="100%" stop-color="#efb11d" />
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="56" fill="#fef7e6" />
+  <rect x="22" y="22" width="212" height="212" rx="44" fill="url(#sunrise)" />
+  <circle cx="188" cy="70" r="24" fill="#fff4d0" fill-opacity="0.9" />
+  <path d="M42 176c34-34 68-50 102-48 28 2 50 16 70 32v34H42z" fill="#fff4d0" fill-opacity="0.16" />
+  <path d="M66 132h24l18 22 22-54 20 40h20" fill="none" stroke="#fff8ea" stroke-linecap="round" stroke-linejoin="round" stroke-width="14" />
+  <text x="56" y="210" fill="#fff8ea" font-family="Noto Sans TC, PingFang TC, Microsoft JhengHei, sans-serif" font-size="52" font-weight="700">早安</text>
+</svg>

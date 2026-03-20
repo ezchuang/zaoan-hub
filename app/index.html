@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b6e4f">
+  <meta name="description" content="Zaoan Hub - browser-based morning image broadcast MVP for iPhone and restricted desktop environments.">
+  <title>Zaoan Hub</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="shell">
+    <header class="hero panel">
+      <div class="hero-copy">
+        <p class="eyebrow">Zaoan Hub</p>
+        <h1>幫長輩用瀏覽器完成早安圖群發</h1>
+        <p class="hero-text">
+          先把聯絡人、群組與發送流程做好，再依裝置條件決定用 iPhone 分享面板或未來的官方通道送出。
+        </p>
+        <div class="hero-actions">
+          <button id="seed-button" class="button button-secondary" type="button">載入示範名單</button>
+          <button id="reset-button" class="button button-ghost" type="button">清空本地資料</button>
+        </div>
+      </div>
+      <aside class="hero-aside">
+        <div class="status-card">
+          <span class="status-label">推薦落地方式</span>
+          <strong>iPhone Safari / 加入主畫面</strong>
+          <p>公務電腦負責建名單，真正分享由手機完成，避開安裝限制。</p>
+        </div>
+        <div class="status-card accent">
+          <span class="status-label">這版重點</span>
+          <strong>先做可用流程，不先綁死平台</strong>
+          <p>真正自動群發要看最終通訊平台是否提供合法且穩定的 API。</p>
+        </div>
+      </aside>
+    </header>
+
+    <main class="content">
+      <section class="step-grid">
+        <article class="panel step-card">
+          <span class="step-index">01</span>
+          <h2>建聯絡人</h2>
+          <p>每位對象可先記錄偏好的收訊通道與備註，方便後續分組。</p>
+        </article>
+        <article class="panel step-card">
+          <span class="step-index">02</span>
+          <h2>組群發名單</h2>
+          <p>可建立常用群組，也可在發送前臨時勾選要送的人。</p>
+        </article>
+        <article class="panel step-card">
+          <span class="step-index">03</span>
+          <h2>選發送方式</h2>
+          <p>現在先支援 iPhone 分享；正式自動化則保留官方通道接點。</p>
+        </article>
+      </section>
+
+      <section class="workspace">
+        <section class="panel stack">
+          <div class="section-header">
+            <div>
+              <p class="eyebrow">名單管理</p>
+              <h2>聯絡人</h2>
+            </div>
+            <span id="contact-count" class="pill">0 位</span>
+          </div>
+
+          <form id="contact-form" class="stack form-card">
+            <label>
+              <span>姓名</span>
+              <input id="contact-name" name="name" type="text" maxlength="20" placeholder="例如：王阿姨" required>
+            </label>
+            <label>
+              <span>偏好通道</span>
+              <select id="contact-channel" name="channel">
+                <option value="line">LINE</option>
+                <option value="imessage">iMessage</option>
+                <option value="email">Email</option>
+                <option value="unknown">未確認</option>
+              </select>
+            </label>
+            <label>
+              <span>備註</span>
+              <input id="contact-note" name="note" type="text" maxlength="40" placeholder="例如：只看手機、不用電腦">
+            </label>
+            <button class="button button-primary" type="submit">新增聯絡人</button>
+          </form>
+
+          <div id="contacts-empty" class="empty-state">
+            目前還沒有聯絡人，可以先載入示範名單，或自己新增。
+          </div>
+          <div id="contacts-list" class="list"></div>
+        </section>
+
+        <section class="panel stack">
+          <div class="section-header">
+            <div>
+              <p class="eyebrow">常用名單</p>
+              <h2>群組</h2>
+            </div>
+            <span id="group-count" class="pill">0 組</span>
+          </div>
+
+          <form id="group-form" class="stack form-card">
+            <label>
+              <span>群組名稱</span>
+              <input id="group-name" name="name" type="text" maxlength="20" placeholder="例如：社區朋友" required>
+            </label>
+            <div>
+              <span class="field-label">選擇成員</span>
+              <div id="group-members-picker" class="picker-grid"></div>
+            </div>
+            <button class="button button-primary" type="submit">建立群組</button>
+          </form>
+
+          <div id="groups-empty" class="empty-state">
+            建立群組後，發送時可以一鍵帶入常用收件名單。
+          </div>
+          <div id="groups-list" class="list"></div>
+        </section>
+      </section>
+
+      <section class="panel broadcast-panel">
+        <div class="section-header">
+          <div>
+            <p class="eyebrow">發送流程</p>
+            <h2>建立這次的早安圖群發</h2>
+          </div>
+          <span id="selected-count" class="pill accent-pill">0 位收件者</span>
+        </div>
+
+        <div class="broadcast-layout">
+          <form id="campaign-form" class="stack form-card">
+            <label>
+              <span>發送標題</span>
+              <input id="campaign-title" name="title" type="text" maxlength="30" value="今天的早安圖">
+            </label>
+            <label>
+              <span>署名</span>
+              <input id="campaign-sender" name="sender" type="text" maxlength="20" value="家族早安小編">
+            </label>
+            <label>
+              <span>祝福文字</span>
+              <textarea id="campaign-message" name="message" rows="4">早安，祝大家今天平安順心、心情愉快。</textarea>
+            </label>
+            <label>
+              <span>套用群組</span>
+              <select id="campaign-group" name="group">
+                <option value="">不套用群組</option>
+              </select>
+            </label>
+            <div>
+              <span class="field-label">這次要送給誰</span>
+              <div id="campaign-recipients-picker" class="picker-grid"></div>
+            </div>
+            <div>
+              <span class="field-label">發送方式</span>
+              <div class="mode-grid">
+                <label class="mode-card active" data-mode-card="share-sheet">
+                  <input type="radio" name="send-mode" value="share-sheet" checked>
+                  <strong>手機分享</strong>
+                  <span>用 iPhone / iPad 叫出系統分享面板，最快落地。</span>
+                </label>
+                <label class="mode-card" data-mode-card="official-channel">
+                  <input type="radio" name="send-mode" value="official-channel">
+                  <strong>官方通道</strong>
+                  <span>匯出批次資料，預留給未來串接 LINE OA / Email backend。</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="action-row">
+              <button id="share-button" class="button button-primary" type="button">手機分享</button>
+              <button id="export-button" class="button button-secondary" type="button">匯出發送批次</button>
+            </div>
+          </form>
+
+          <aside class="preview-card">
+            <div class="preview-image-wrap">
+              <canvas id="preview-canvas" width="1200" height="630" aria-label="早安圖預覽"></canvas>
+            </div>
+            <div class="preview-body">
+              <h3>發送預覽</h3>
+              <p id="preview-summary">尚未選擇收件者</p>
+              <ul id="recipient-preview" class="recipient-preview"></ul>
+              <div id="status-box" class="status-box">
+                這一版的圖片是動態產生的 placeholder，用來驗證流程，不是正式圖庫。
+              </div>
+            </div>
+          </aside>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
