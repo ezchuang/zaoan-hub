@@ -26,6 +26,7 @@
 - `app/index.html`: 單頁介面
 - `app/styles.css`: 針對長輩操作設計的高對比、大按鈕 UI
 - `app/app.js`: 本地資料管理、群組管理、發送預覽、iOS share-sheet 流程
+- `app/data-transfer.js`: 全資料匯出 / 匯入，方便在公務電腦與 iPhone 之間搬移名單
 - `app/pwa.js`: PWA 安裝狀態、離線快取狀態、主畫面模式偵測
 - `app/sw.js`: service worker，負責 app shell 快取與離線 fallback
 - `app/manifest.webmanifest`: 方便加入 iOS 主畫面
@@ -52,7 +53,19 @@ python server.py
 但要注意，這裡的「不靠 server」只適用於前端本機操作：
 
 - 可離線：聯絡人、群組、早安圖產生、匯出批次
+- 可離線：全資料備份與還原
 - 不可完全離線：真正送到 LINE / iMessage / Email、跨裝置同步、真正自動排程
+
+## 沒有 server 時，怎麼換手機或搬資料
+
+這一版已補上 `匯出全部資料` / `匯入全部資料`：
+
+1. 在公務電腦整理好聯絡人與群組
+2. 按 `匯出全部資料` 下載 JSON
+3. 把 JSON 傳到 iPhone
+4. 在 iPhone 的 Zaoan Hub 按 `匯入全部資料`
+
+這樣即使沒有後端同步，還是能把名單搬到手機本機使用。
 
 ## iPhone 安裝方式
 

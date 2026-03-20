@@ -162,6 +162,12 @@ button {
   gap: 10px;
 }
 
+.runtime-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .runtime-badge {
   display: inline-flex;
   align-items: center;
@@ -563,7 +569,8 @@ textarea:focus {
   }
 
   .action-row,
-  .hero-actions {
+  .hero-actions,
+  .runtime-actions {
     flex-direction: column;
   }
 
