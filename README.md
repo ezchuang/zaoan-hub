@@ -24,9 +24,11 @@
 ## 目前專案內容
 
 - `app/index.html`: 單頁介面
+- `app/guide.html`: iPhone 真機安裝導引頁與首次使用清單
 - `app/styles.css`: 針對長輩操作設計的高對比、大按鈕 UI
 - `app/app.js`: 本地資料管理、群組管理、發送預覽、iOS share-sheet 流程
 - `app/data-transfer.js`: 全資料匯出 / 匯入，方便在公務電腦與 iPhone 之間搬移名單
+- `app/guide.js`: 導引頁狀態偵測、首次使用清單、真機安裝提示
 - `app/pwa.js`: PWA 安裝狀態、離線快取狀態、主畫面模式偵測
 - `app/sw.js`: service worker，負責 app shell 快取與離線 fallback
 - `app/manifest.webmanifest`: 方便加入 iOS 主畫面
@@ -56,6 +58,16 @@ python server.py
 - 可離線：全資料備份與還原
 - 不可完全離線：真正送到 LINE / iMessage / Email、跨裝置同步、真正自動排程
 
+## 私人帳號模式
+
+這個專案現在優先對準的是：
+
+- 用你自己的 LINE / iMessage 私人帳號送出
+- 由 Zaoan Hub 幫你整理名單、群組、圖文與分享前流程
+- 最後一步仍由 iPhone 分享面板進入 LINE，再由你自己選朋友或群組
+
+也就是說，這一版不是在做 LINE Official Account 廣播，而是在做「私人帳號分享輔助」。
+
 ## 沒有 server 時，怎麼換手機或搬資料
 
 這一版已補上 `匯出全部資料` / `匯入全部資料`：
@@ -75,6 +87,18 @@ python server.py
 4. 之後從主畫面打開，即可離線進入已快取版本
 
 開發時可用 `http://127.0.0.1:8765` 測試；正式上線要讓 iPhone 正常安裝與更新，仍建議使用 HTTPS。
+
+## 真機安裝導引頁
+
+可直接把這頁傳給手機：
+
+- `https://<your-host>/guide.html`
+
+導引頁會做三件事：
+
+1. 檢查目前是不是從 Safari / 主畫面模式開啟
+2. 提示離線快取是否已完成
+3. 提供 iPhone 首次使用清單，包含 LINE 可用、資料匯入、分享測試
 
 ## MVP 使用方式
 
@@ -119,14 +143,14 @@ python server.py
 
 如果你要把它做成真正可上線的系統，我會建議二選一：
 
-1. `iPhone assisted sending`
-   - 長輩在手機上用系統分享
-   - 優點：最快可落地，不受公務電腦安裝限制
-   - 缺點：最後一步仍要手動選 app / 對象
-2. `Official account broadcasting`
-   - 讓收件者先訂閱官方帳號，再由後台廣播
-   - 優點：可真正自動化、可管理名單與發送紀錄
-   - 缺點：需要平台申請、權限設定、收件者 onboarding
+1. `私人帳號分享輔助`
+   - 長輩在手機上用系統分享，最後一步進 LINE / iMessage 選聊天對象
+   - 優點：最貼近你目前要的私人帳號使用方式，不受公務電腦安裝限制
+   - 缺點：最後一步仍要手動選對象，不是全自動
+2. `後續再決定是否做同步 backend`
+   - 若未來覺得 JSON 匯入 / 匯出不夠，再補帳號同步與後端
+   - 優點：先把真實使用流程跑通，再決定是否值得投資後端
+   - 缺點：目前跨裝置同步仍不是即時的
 
 ## 已知限制
 

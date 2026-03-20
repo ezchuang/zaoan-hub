@@ -405,7 +405,7 @@
 
       if (canShareFiles(payload.files)) {
         await navigator.share(payload);
-        setStatus(`已開啟系統分享面板，準備送給 ${recipients.length} 位對象。`);
+        setStatus(`已開啟系統分享面板，接下來請在 LINE 或 iMessage 選擇 ${recipients.length} 位對象。`);
         return;
       }
 
@@ -414,12 +414,12 @@
           title: payload.title,
           text: payload.text
         });
-        setStatus("裝置支援文字分享，但不一定支援圖片檔；已先叫出分享面板。");
+        setStatus("裝置支援文字分享，但不一定支援圖片檔；已先叫出分享面板，接下來請手動挑私人聊天對象。");
         return;
       }
 
       await fallbackDownload(payload.files[0], payload.text);
-      setStatus("此裝置不支援原生分享，已改成下載圖片並複製文字。");
+      setStatus("此裝置不支援原生分享，已改成下載圖片並複製文字，請再用 LINE 或 iMessage 手動傳送。");
     } catch (error) {
       if (error && error.name === "AbortError") {
         setStatus("已取消分享。");
@@ -568,7 +568,7 @@
   function updateActionButtons() {
     const shareMode = state.campaign.sendMode === "share-sheet";
     elements.shareButton.disabled = !shareMode;
-    elements.shareButton.textContent = shareMode ? "手機分享" : "官方通道模式下請改用匯出";
+    elements.shareButton.textContent = shareMode ? "分享到私人帳號" : "批次匯出模式下請改用匯出";
   }
 
   function findContact(contactId) {

@@ -37,6 +37,10 @@ textarea {
   font: inherit;
 }
 
+a {
+  color: inherit;
+}
+
 button {
   cursor: pointer;
 }
@@ -124,6 +128,10 @@ button {
   margin: 0;
   line-height: 1.6;
   color: var(--muted);
+}
+
+.guide-hero .hero-copy h1 {
+  max-width: 12ch;
 }
 
 .content {
@@ -252,6 +260,80 @@ button {
   gap: 20px;
 }
 
+.guide-status-panel,
+.guide-checklist-panel,
+.guide-flow-panel,
+.guide-faq-panel {
+  padding: 0 0 24px;
+}
+
+.guide-status-grid,
+.guide-flow-grid,
+.faq-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin: 0 24px;
+}
+
+.guide-status-card,
+.faq-card {
+  padding: 20px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(23, 49, 47, 0.08);
+}
+
+.guide-status-card strong,
+.faq-card strong {
+  display: block;
+  margin: 6px 0 10px;
+  font-size: 1.08rem;
+}
+
+.guide-status-card p,
+.faq-card p {
+  margin: 0;
+  line-height: 1.65;
+  color: var(--muted);
+}
+
+.guide-check-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin: 0 24px;
+}
+
+.guide-check-card {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  align-items: start;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(23, 49, 47, 0.08);
+}
+
+.guide-check-card input {
+  width: 22px;
+  height: 22px;
+  margin-top: 2px;
+}
+
+.guide-check-card strong {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 1.05rem;
+}
+
+.guide-check-card p {
+  margin: 0;
+  line-height: 1.65;
+  color: var(--muted);
+}
+
 .stack {
   display: grid;
   gap: 16px;
@@ -321,6 +403,13 @@ textarea:focus {
   padding: 0 22px;
   font-weight: 800;
   letter-spacing: 0.02em;
+}
+
+a.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
 }
 
 .button:disabled {
@@ -472,6 +561,25 @@ textarea:focus {
   flex-wrap: wrap;
 }
 
+.private-note {
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: rgba(11, 110, 79, 0.08);
+  border: 1px solid rgba(11, 110, 79, 0.14);
+}
+
+.private-note strong {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 1.02rem;
+}
+
+.private-note p {
+  margin: 0;
+  line-height: 1.65;
+  color: var(--muted);
+}
+
 .preview-card {
   display: grid;
   gap: 16px;
@@ -536,8 +644,15 @@ textarea:focus {
   .hero,
   .runtime-panel,
   .workspace,
+  .guide-status-grid,
+  .guide-flow-grid,
+  .faq-list,
   .broadcast-layout,
   .step-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .guide-check-grid {
     grid-template-columns: 1fr;
   }
 

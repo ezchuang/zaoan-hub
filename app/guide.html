@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b6e4f">
+  <meta name="description" content="Zaoan Hub iPhone installation guide for private LINE and iMessage sharing.">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Zaoan Hub Guide">
+  <title>Zaoan Hub 安裝導引</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="./icon.svg">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="shell">
+    <header class="hero panel guide-hero">
+      <div class="hero-copy">
+        <p class="eyebrow">Install Guide</p>
+        <h1>iPhone 私人帳號發送安裝導引</h1>
+        <p class="hero-text">
+          這個頁面專門用來完成第一次上手：把 Zaoan Hub 裝到 iPhone 主畫面、搬入名單資料，最後用你自己的 LINE / iMessage 帳號送出早安圖。
+        </p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="./index.html">打開主程式</a>
+          <a class="button button-ghost" href="./index.html">回到首頁</a>
+        </div>
+      </div>
+      <aside class="hero-aside">
+        <div class="status-card">
+          <span class="status-label">這頁用途</span>
+          <strong>先裝好，再開始發</strong>
+          <p>先把離線能力、主畫面入口與資料搬移流程完成，再進主畫面實際分享。</p>
+        </div>
+        <div class="status-card accent">
+          <span class="status-label">私人帳號前提</span>
+          <strong>最後一步仍由你自己在 LINE 選聊天對象</strong>
+          <p>這版是分享輔助，不是控制私人 LINE 帳號替你自動選好友或群組。</p>
+        </div>
+      </aside>
+    </header>
+
+    <main class="content">
+      <section class="panel guide-status-panel">
+        <div class="section-header">
+          <div>
+            <p class="eyebrow">裝置狀態</p>
+            <h2>先確認這台 iPhone 是否準備完成</h2>
+          </div>
+        </div>
+        <div class="guide-status-grid">
+          <article class="guide-status-card">
+            <span class="status-label">開啟方式</span>
+            <strong id="guide-mode-badge">檢查中</strong>
+            <p id="guide-mode-copy">建議先用 Safari 打開這個導引頁。</p>
+          </article>
+          <article class="guide-status-card">
+            <span class="status-label">離線能力</span>
+            <strong id="guide-offline-badge">檢查中</strong>
+            <p id="guide-offline-copy">第一次仍需要透過網址把離線殼層載入手機。</p>
+          </article>
+          <article class="guide-status-card">
+            <span class="status-label">本機資料</span>
+            <strong id="guide-data-badge">檢查中</strong>
+            <p id="guide-data-copy">如果你先在公務電腦整理名單，這裡會提醒你匯入 JSON。</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel guide-checklist-panel">
+        <div class="section-header">
+          <div>
+            <p class="eyebrow">首次清單</p>
+            <h2>照順序做，第一次上手會最穩</h2>
+          </div>
+        </div>
+        <div class="guide-check-grid">
+          <label class="guide-check-card">
+            <input type="checkbox" data-guide-step="opened_safari">
+            <div>
+              <strong>用 Safari 打開</strong>
+              <p>請不要用 LINE 內建瀏覽器或其他 app 內嵌頁面完成首次安裝。</p>
+            </div>
+          </label>
+          <label class="guide-check-card">
+            <input type="checkbox" data-guide-step="added_home_screen">
+            <div>
+              <strong>加入主畫面</strong>
+              <p>按 Safari 分享按鈕，選「加入主畫面」，之後從主畫面打開。</p>
+            </div>
+          </label>
+          <label class="guide-check-card">
+            <input type="checkbox" data-guide-step="line_ready">
+            <div>
+              <strong>確認 LINE 可用</strong>
+              <p>這台 iPhone 上要先有 LINE，之後分享時才看得到 LINE 目標。</p>
+            </div>
+          </label>
+          <label class="guide-check-card">
+            <input type="checkbox" data-guide-step="data_imported">
+            <div>
+              <strong>匯入名單資料</strong>
+              <p>若公務電腦已整理好名單，先把 JSON 匯入到這台手機。</p>
+            </div>
+          </label>
+          <label class="guide-check-card">
+            <input type="checkbox" data-guide-step="share_tested">
+            <div>
+              <strong>測過一次分享</strong>
+              <p>進主程式按「分享到私人帳號」，確認分享面板裡看得到 LINE。</p>
+            </div>
+          </label>
+          <label class="guide-check-card">
+            <input type="checkbox" data-guide-step="line_target_confirmed">
+            <div>
+              <strong>確認朋友 / 群組流程</strong>
+              <p>在 LINE 裡實際點過一位朋友或一個群組，確保最後一步操作順手。</p>
+            </div>
+          </label>
+        </div>
+      </section>
+
+      <section class="panel guide-flow-panel">
+        <div class="section-header">
+          <div>
+            <p class="eyebrow">實際發送</p>
+            <h2>用私人 LINE 帳號送早安圖的實際流程</h2>
+          </div>
+        </div>
+        <div class="guide-flow-grid">
+          <article class="step-card panel">
+            <span class="step-index">01</span>
+            <h2>打開主程式</h2>
+            <p>從主畫面打開 Zaoan Hub，而不是每次回 Safari 找網址。</p>
+          </article>
+          <article class="step-card panel">
+            <span class="step-index">02</span>
+            <h2>選名單與群組</h2>
+            <p>先在主程式選好這次要發的人，再產生早安圖與文案。</p>
+          </article>
+          <article class="step-card panel">
+            <span class="step-index">03</span>
+            <h2>分享到私人帳號</h2>
+            <p>按分享後，從 iPhone 分享面板選 LINE，再挑朋友或群組送出。</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel guide-faq-panel">
+        <div class="section-header">
+          <div>
+            <p class="eyebrow">常見問題</p>
+            <h2>第一次使用最容易卡住的地方</h2>
+          </div>
+        </div>
+        <div class="faq-list">
+          <article class="faq-card">
+            <strong>為什麼不能直接幫我選好 LINE 私人好友？</strong>
+            <p>因為這版走的是私人帳號分享路線，web app 可以幫你把資料和圖片準備好，但最後選哪個聊天對象仍要由 LINE app 裡的你自己決定。</p>
+          </article>
+          <article class="faq-card">
+            <strong>如果分享面板沒看到 LINE 怎麼辦？</strong>
+            <p>先確認這台 iPhone 已安裝 LINE，再到 iOS 分享面板最右側找「更多」，把 LINE 加進分享目標。</p>
+          </article>
+          <article class="faq-card">
+            <strong>如果我先在公務電腦整理名單？</strong>
+            <p>先在公務電腦按「匯出全部資料」，把 JSON 傳到 iPhone，再從主程式按「匯入全部資料」。</p>
+          </article>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="./guide.js"></script>
+</body>
+</html>

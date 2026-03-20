@@ -2,9 +2,11 @@ const CACHE_NAME = "zaoan-hub-shell-v2";
 const APP_SHELL = [
   "/",
   "/index.html",
+  "/guide.html",
   "/styles.css",
   "/app.js",
   "/data-transfer.js",
+  "/guide.js",
   "/pwa.js",
   "/manifest.webmanifest",
   "/icon.svg"

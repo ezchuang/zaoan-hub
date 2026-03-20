@@ -21,11 +21,12 @@
         <p class="eyebrow">Zaoan Hub</p>
         <h1>幫長輩用瀏覽器完成早安圖群發</h1>
         <p class="hero-text">
-          先把聯絡人、群組與發送流程做好，再依裝置條件決定用 iPhone 分享面板或未來的官方通道送出。
+          先把聯絡人、群組與發送流程做好，再由 iPhone 分享面板把圖片送到你自己的 LINE / iMessage 私人帳號聊天對象。
         </p>
         <div class="hero-actions">
           <button id="seed-button" class="button button-secondary" type="button">載入示範名單</button>
           <button id="reset-button" class="button button-ghost" type="button">清空本地資料</button>
+          <a class="button button-ghost" href="./guide.html">iPhone 安裝導引</a>
         </div>
       </div>
       <aside class="hero-aside">
@@ -36,8 +37,8 @@
         </div>
         <div class="status-card accent">
           <span class="status-label">這版重點</span>
-          <strong>先做可用流程，不先綁死平台</strong>
-          <p>真正自動群發要看最終通訊平台是否提供合法且穩定的 API。</p>
+          <strong>鎖定私人帳號分享，不做官方帳號廣播假象</strong>
+          <p>這版目標是幫你用自己的 LINE / iMessage 私聊或群組分享，最後一步仍由 iPhone 分享面板完成。</p>
         </div>
       </aside>
     </header>
@@ -83,8 +84,8 @@
         </article>
         <article class="panel step-card">
           <span class="step-index">03</span>
-          <h2>選發送方式</h2>
-          <p>現在先支援 iPhone 分享；正式自動化則保留官方通道接點。</p>
+          <h2>用私人帳號送出</h2>
+          <p>現在主打 iPhone 分享到私人 LINE / iMessage；不把私人帳號需求包裝成官方廣播。</p>
         </article>
       </section>
 
@@ -164,6 +165,10 @@
 
         <div class="broadcast-layout">
           <form id="campaign-form" class="stack form-card">
+            <div class="private-note">
+              <strong>私人帳號模式</strong>
+              <p>這一版是為了用你自己的 LINE / iMessage 帳號分享而設計。系統會先整理名單與產圖，最後一步由 iPhone 分享面板讓你選聊天對象。</p>
+            </div>
             <label>
               <span>發送標題</span>
               <input id="campaign-title" name="title" type="text" maxlength="30" value="今天的早安圖">
@@ -191,19 +196,19 @@
               <div class="mode-grid">
                 <label class="mode-card active" data-mode-card="share-sheet">
                   <input type="radio" name="send-mode" value="share-sheet" checked>
-                  <strong>手機分享</strong>
-                  <span>用 iPhone / iPad 叫出系統分享面板，最快落地。</span>
+                  <strong>私人帳號分享</strong>
+                  <span>用 iPhone / iPad 叫出系統分享面板，選 LINE 或 iMessage，再挑朋友或群組。</span>
                 </label>
                 <label class="mode-card" data-mode-card="official-channel">
                   <input type="radio" name="send-mode" value="official-channel">
-                  <strong>官方通道</strong>
-                  <span>匯出批次資料，預留給未來串接 LINE OA / Email backend。</span>
+                  <strong>批次匯出</strong>
+                  <span>只匯出資料，不代替你用私人帳號發送；保留給未來 backend 或人工轉單流程。</span>
                 </label>
               </div>
             </div>
 
             <div class="action-row">
-              <button id="share-button" class="button button-primary" type="button">手機分享</button>
+              <button id="share-button" class="button button-primary" type="button">分享到私人帳號</button>
               <button id="export-button" class="button button-secondary" type="button">匯出發送批次</button>
             </div>
           </form>
