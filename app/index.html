@@ -5,9 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b6e4f">
   <meta name="description" content="Zaoan Hub - browser-based morning image broadcast MVP for iPhone and restricted desktop environments.">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Zaoan Hub">
   <title>Zaoan Hub</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="./icon.svg">
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
@@ -39,6 +43,28 @@
     </header>
 
     <main class="content">
+      <section class="panel runtime-panel">
+        <div class="runtime-copy">
+          <p class="eyebrow">離線模式</p>
+          <h2>第一次用網址開啟，之後可加入主畫面離線運作</h2>
+          <p id="install-copy" class="runtime-text">
+            第一次仍需要由 server 提供網頁；安裝到 iPhone 主畫面後，聯絡人、群組與早安圖產生流程可在手機本機離線開啟。
+          </p>
+        </div>
+        <div class="runtime-statuses">
+          <div class="runtime-badges">
+            <span id="app-mode-badge" class="runtime-badge">瀏覽器模式</span>
+            <span id="offline-badge" class="runtime-badge">離線快取初始化中</span>
+            <span id="network-badge" class="runtime-badge">檢查網路中</span>
+          </div>
+          <ol id="install-steps" class="install-steps">
+            <li>用 iPhone Safari 打開這個網址。</li>
+            <li>按分享按鈕，選「加入主畫面」。</li>
+            <li>之後從主畫面打開，就會像獨立 App 一樣運作。</li>
+          </ol>
+        </div>
+      </section>
+
       <section class="step-grid">
         <article class="panel step-card">
           <span class="step-index">01</span>
@@ -196,5 +222,6 @@
   </div>
 
   <script src="./app.js"></script>
+  <script src="./pwa.js"></script>
 </body>
 </html>

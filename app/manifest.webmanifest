@@ -1,8 +1,11 @@
 {
   "name": "Zaoan Hub",
   "short_name": "Zaoan Hub",
+  "id": "/",
+  "lang": "zh-Hant",
   "description": "Browser-based morning image broadcast MVP for iPhone and restricted desktop environments.",
-  "start_url": "./index.html",
+  "start_url": "/index.html",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#f3efe2",
   "theme_color": "#0b6e4f",
@@ -15,4 +18,3 @@
     }
   ]
 }
-

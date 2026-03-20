@@ -26,6 +26,8 @@
 - `app/index.html`: 單頁介面
 - `app/styles.css`: 針對長輩操作設計的高對比、大按鈕 UI
 - `app/app.js`: 本地資料管理、群組管理、發送預覽、iOS share-sheet 流程
+- `app/pwa.js`: PWA 安裝狀態、離線快取狀態、主畫面模式偵測
+- `app/sw.js`: service worker，負責 app shell 快取與離線 fallback
 - `app/manifest.webmanifest`: 方便加入 iOS 主畫面
 - `app/icon.svg`: 基本 icon
 - `server.py`: 不依賴第三方套件的本地開發 server
@@ -38,6 +40,28 @@ python server.py
 ```
 
 預設會開在 `http://127.0.0.1:8765`。
+
+## 離線 / 不靠 server 的範圍
+
+這一版已經補成 PWA，意思是：
+
+- 第一次仍要透過一個網址載入頁面
+- 之後可加入 iPhone 主畫面，像獨立 App 一樣開啟
+- 只要這個版本曾成功快取，後續可在沒有 server 的情況下離線使用
+
+但要注意，這裡的「不靠 server」只適用於前端本機操作：
+
+- 可離線：聯絡人、群組、早安圖產生、匯出批次
+- 不可完全離線：真正送到 LINE / iMessage / Email、跨裝置同步、真正自動排程
+
+## iPhone 安裝方式
+
+1. 用 Safari 打開部署好的 HTTPS 網址
+2. 等頁面顯示 `離線快取已啟用`
+3. 點 Safari 分享按鈕，選 `加入主畫面`
+4. 之後從主畫面打開，即可離線進入已快取版本
+
+開發時可用 `http://127.0.0.1:8765` 測試；正式上線要讓 iPhone 正常安裝與更新，仍建議使用 HTTPS。
 
 ## MVP 使用方式
 
@@ -76,7 +100,7 @@ python server.py
 
 ### 3. 為什麼沒有先做 backend
 
-因為這一版主要風險不是 CRUD，而是「可不可以在不裝 App 的前提下，完成操作與送出」。先驗證互動流程，再決定要不要投資真正的訊息平台整合。
+因為這一版主要風險不是 CRUD，而是「可不可以在不裝 App 的前提下，完成操作與送出」。現在已先用 PWA 把本機離線操作打通，再決定要不要投資真正的訊息平台整合。
 
 ## 建議的下一步
 
@@ -96,6 +120,7 @@ python server.py
 - 目前資料存在 `localStorage`，還沒有跨裝置同步
 - 目前圖片是動態產生的 placeholder，不是正式圖庫
 - `手機分享` 是否能直接顯示特定 app，仍受 iOS share sheet 與裝置安裝狀態影響
+- 第一次安裝與快取更新仍需要透過網址載入，不能做到從零開始完全不經 server
 - 若未來要做真正自動群發，必須先確認目標平台與法規/權限限制
 
 ## 參考資料
@@ -106,4 +131,3 @@ python server.py
 - WebKit: [New WebKit Features in Safari 15](https://webkit.org/blog/11989/new-webkit-features-in-safari-15/)
 - WebKit: [Web Push for Web Apps on iOS and iPadOS](https://webkit.org/blog/13878/web-push-for-web-apps-on-ios-and-ipados/)
 - WebKit: [Allowing Web Share on Third-Party Sites](https://webkit.org/blog/13708/allowing-web-share-on-third-party-sites/)
-
