@@ -90,7 +90,7 @@
           selectedContactIds: Array.isArray(parsed.campaign?.selectedContactIds)
             ? parsed.campaign.selectedContactIds
             : [],
-          sendMode: parsed.campaign?.sendMode || "share-sheet"
+          sendMode: parsed.campaign?.sendMode === "official-channel" ? "official-channel" : "share-sheet"
         }
       };
     } catch (error) {
@@ -125,7 +125,7 @@
                 <strong>${escapeHtml(contact.name)}</strong>
                 <span class="tag">${formatChannel(contact.channel)}</span>
               </div>
-              <button class="button button-ghost" type="button" data-action="remove-contact" data-id="${contact.id}">
+              <button class="button button-ghost" type="button" data-action="remove-contact" data-id="${escapeHtml(contact.id)}">
                 刪除
               </button>
             </div>
@@ -156,7 +156,7 @@
                 <strong>${escapeHtml(group.name)}</strong>
                 <span class="tag">${names.length} 位成員</span>
               </div>
-              <button class="button button-ghost" type="button" data-action="remove-group" data-id="${group.id}">
+              <button class="button button-ghost" type="button" data-action="remove-group" data-id="${escapeHtml(group.id)}">
                 刪除
               </button>
             </div>
@@ -177,7 +177,7 @@
         const checked = state.campaign.selectedContactIds.includes(contact.id) ? "checked" : "";
         return `
           <label class="picker-chip">
-            <input type="checkbox" data-role="campaign-contact" value="${contact.id}" ${checked}>
+            <input type="checkbox" data-role="campaign-contact" value="${escapeHtml(contact.id)}" ${checked}>
             <span>${escapeHtml(contact.name)}</span>
           </label>
         `;
@@ -188,7 +188,7 @@
       .map((contact) => {
         return `
           <label class="picker-chip">
-            <input type="checkbox" data-role="group-member" value="${contact.id}">
+            <input type="checkbox" data-role="group-member" value="${escapeHtml(contact.id)}">
             <span>${escapeHtml(contact.name)}</span>
           </label>
         `;
@@ -203,7 +203,7 @@
       '<option value="">不套用群組</option>',
       ...state.groups.map((group) => {
         const selected = group.id === state.campaign.selectedGroupId ? "selected" : "";
-        return `<option value="${group.id}" ${selected}>${escapeHtml(group.name)}</option>`;
+        return `<option value="${escapeHtml(group.id)}" ${selected}>${escapeHtml(group.name)}</option>`;
       })
     ].join("");
 
@@ -216,7 +216,9 @@
     document.getElementById("campaign-title").value = state.campaign.title;
     document.getElementById("campaign-sender").value = state.campaign.sender;
     document.getElementById("campaign-message").value = state.campaign.message;
-    document.querySelector(`input[name="send-mode"][value="${state.campaign.sendMode}"]`).checked = true;
+    const sendModeInput = Array.from(document.querySelectorAll('input[name="send-mode"]'))
+      .find((input) => input.value === state.campaign.sendMode);
+    (sendModeInput || document.querySelector('input[name="send-mode"][value="share-sheet"]')).checked = true;
   }
 
   function handleSeedData() {
