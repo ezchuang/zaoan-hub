@@ -88,6 +88,17 @@ python server.py
 
 開發時可用 `http://127.0.0.1:8765` 測試；正式上線要讓 iPhone 正常安裝與更新，仍建議使用 HTTPS。
 
+## Security hardening
+
+目前前端與開發 server 已加入：
+
+- 嚴格的 JSON 匯入 schema、數量、欄位長度與 ID 驗證
+- HTML attribute escaping，避免匯入資料形成 stored DOM XSS
+- `Content-Security-Policy`、`X-Content-Type-Options`、`X-Frame-Options`、`Referrer-Policy` 與 `Permissions-Policy`
+- `service worker` app-shell allowlist，不會快取未列入清單的 same-origin API 或頁面
+
+正式部署到 GitHub Pages、Cloudflare Pages、Netlify 或其他 static hosting 時，應在 hosting 層重設相同的 security headers。HTML 內建的 CSP 是 fallback，不能取代完整的 HTTP response headers。
+
 ## 真機安裝導引頁
 
 可直接把這頁傳給手機：
