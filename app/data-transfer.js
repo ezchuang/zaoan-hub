@@ -1,5 +1,5 @@
 (function () {
-  const STORAGE_KEY = "zaoan-hub-state-v1";
+  const storage = window.ZaoanStorage;
   const MAX_IMPORT_BYTES = 1024 * 1024;
   const MAX_CONTACTS = 500;
   const MAX_GROUPS = 100;
@@ -24,7 +24,7 @@
 
   function handleExportState() {
     try {
-      const rawState = window.localStorage.getItem(STORAGE_KEY);
+      const rawState = storage.getState();
       const state = rawState ? normalizeState(JSON.parse(rawState)) : createEmptyState();
       const payload = {
         app: "zaoan-hub",
@@ -65,7 +65,7 @@
         return;
       }
 
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextState));
+      storage.setState(JSON.stringify(nextState));
       setStatus("已匯入全部資料，頁面即將重新載入。");
       window.setTimeout(() => window.location.reload(), 300);
     } catch (error) {

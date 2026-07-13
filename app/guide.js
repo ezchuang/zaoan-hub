@@ -1,6 +1,6 @@
 (function () {
   const GUIDE_STORAGE_KEY = "zaoan-hub-guide-v1";
-  const APP_STORAGE_KEY = "zaoan-hub-state-v1";
+  const appStorage = window.ZaoanStorage;
 
   const elements = {
     modeBadge: document.getElementById("guide-mode-badge"),
@@ -112,7 +112,7 @@
 
   function hasPortableAppData() {
     try {
-      const raw = window.localStorage.getItem(APP_STORAGE_KEY);
+      const raw = appStorage.getState();
       if (!raw) {
         return false;
       }

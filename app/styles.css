@@ -176,6 +176,12 @@ button {
   flex-wrap: wrap;
 }
 
+.privacy-copy {
+  margin: 0;
+  line-height: 1.65;
+  color: var(--muted);
+}
+
 .runtime-badge {
   display: inline-flex;
   align-items: center;

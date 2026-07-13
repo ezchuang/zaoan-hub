@@ -1,5 +1,5 @@
 (function () {
-  const STORAGE_KEY = "zaoan-hub-state-v1";
+  const storage = window.ZaoanStorage;
 
   const sampleState = {
     contacts: [
@@ -73,7 +73,7 @@
 
   function loadState() {
     try {
-      const stored = window.localStorage.getItem(STORAGE_KEY);
+      const stored = storage.getState();
       if (!stored) {
         return deepClone(sampleState);
       }
@@ -100,7 +100,7 @@
   }
 
   function persistState() {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    storage.setState(JSON.stringify(state));
   }
 
   function render() {

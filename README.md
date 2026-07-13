@@ -26,8 +26,10 @@
 - `app/index.html`: 單頁介面
 - `app/guide.html`: iPhone 真機安裝導引頁與首次使用清單
 - `app/styles.css`: 針對長輩操作設計的高對比、大按鈕 UI
+- `app/storage.js`: 統一管理永久儲存與共用裝置 session 儲存
 - `app/app.js`: 本地資料管理、群組管理、發送預覽、iOS share-sheet 流程
 - `app/data-transfer.js`: 全資料匯出 / 匯入，方便在公務電腦與 iPhone 之間搬移名單
+- `app/privacy.js`: 共用裝置模式切換與 privacy 狀態提示
 - `app/guide.js`: 導引頁狀態偵測、首次使用清單、真機安裝提示
 - `app/pwa.js`: PWA 安裝狀態、離線快取狀態、主畫面模式偵測
 - `app/sw.js`: service worker，負責 app shell 快取與離線 fallback
@@ -79,6 +81,17 @@ python server.py
 
 這樣即使沒有後端同步，還是能把名單搬到手機本機使用。
 
+## 公務或共用電腦
+
+主頁可切換 `共用裝置模式`：
+
+- 聯絡人、群組與草稿改存到 `sessionStorage`
+- 不寫入永久 `localStorage`；page session 結束後通常會由 browser 清除
+- 切換時會把原本的永久資料移出 `localStorage`
+- 離開前應先按 `匯出全部資料` 備份
+
+這個模式降低共用電腦留下聯絡人資料的風險，但不是 encryption 或 PIN lock，而且 browser session restore 仍可能保留 session；仍不應在不可信任的裝置上輸入高度敏感資訊。
+
 ## iPhone 安裝方式
 
 1. 用 Safari 打開部署好的 HTTPS 網址
@@ -96,6 +109,7 @@ python server.py
 - HTML attribute escaping，避免匯入資料形成 stored DOM XSS
 - `Content-Security-Policy`、`X-Content-Type-Options`、`X-Frame-Options`、`Referrer-Policy` 與 `Permissions-Policy`
 - `service worker` app-shell allowlist，不會快取未列入清單的 same-origin API 或頁面
+- `共用裝置模式`，避免公務電腦永久保留聯絡人資料
 
 正式部署到 GitHub Pages、Cloudflare Pages、Netlify 或其他 static hosting 時，應在 hosting 層重設相同的 security headers。HTML 內建的 CSP 是 fallback，不能取代完整的 HTTP response headers。
 

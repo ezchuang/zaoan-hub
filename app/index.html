@@ -58,12 +58,15 @@
             <span id="app-mode-badge" class="runtime-badge">瀏覽器模式</span>
             <span id="offline-badge" class="runtime-badge">離線快取初始化中</span>
             <span id="network-badge" class="runtime-badge">檢查網路中</span>
+            <span id="privacy-mode-badge" class="runtime-badge">檢查儲存模式中</span>
           </div>
           <div class="runtime-actions">
             <button id="export-state-button" class="button button-secondary" type="button">匯出全部資料</button>
             <button id="import-state-button" class="button button-ghost" type="button">匯入全部資料</button>
+            <button id="privacy-mode-button" class="button button-ghost" type="button">啟用共用裝置模式</button>
             <input id="import-state-file" type="file" accept="application/json" hidden>
           </div>
+          <p id="privacy-mode-copy" class="privacy-copy">正在檢查資料會保存在哪裡。</p>
           <ol id="install-steps" class="install-steps">
             <li>用 iPhone Safari 打開這個網址。</li>
             <li>按分享按鈕，選「加入主畫面」。</li>
@@ -232,8 +235,10 @@
     </main>
   </div>
 
+  <script src="./storage.js"></script>
   <script src="./app.js"></script>
   <script src="./data-transfer.js"></script>
+  <script src="./privacy.js"></script>
   <script src="./pwa.js"></script>
 </body>
 </html>
