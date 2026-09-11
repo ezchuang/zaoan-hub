@@ -1,4 +1,4 @@
-const CACHE_NAME = "zaoan-hub-shell-v4";
+const CACHE_NAME = "zaoan-hub-shell-v5";
 const APP_SHELL_PATHS = [
   "./",
   "./index.html",

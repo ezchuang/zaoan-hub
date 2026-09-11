@@ -23,6 +23,10 @@
     }
   };
 
+  let loadFailed = false;
+  let shareFile = null;
+  let previewVersion = 0;
+  let sharing = false;
   const state = loadState();
 
   const elements = {
@@ -46,11 +50,21 @@
     exportButton: document.getElementById("export-button"),
     contactCount: document.getElementById("contact-count"),
     groupCount: document.getElementById("group-count"),
-    selectedCount: document.getElementById("selected-count")
+    selectedCount: document.getElementById("selected-count"),
+    downloadButton: document.getElementById("download-button"),
+    copyButton: document.getElementById("copy-button"),
+    shareResult: document.getElementById("share-result"),
+    shareHelp: document.getElementById("share-help"),
+    draftStatus: document.getElementById("draft-status"),
+    storageWarning: document.getElementById("storage-warning")
   };
 
   bindEvents();
   render();
+  showView(false);
+  document.getElementById("today-date").textContent = new Intl.DateTimeFormat("zh-TW", {
+    month: "long", day: "numeric", weekday: "long"
+  }).format(new Date());
 
   function bindEvents() {
     elements.seedButton.addEventListener("click", handleSeedData);
@@ -60,22 +74,57 @@
     elements.campaignForm.addEventListener("input", handleCampaignInput);
     elements.shareButton.addEventListener("click", handleShare);
     elements.exportButton.addEventListener("click", handleExport);
-
-    document.querySelectorAll('input[name="send-mode"]').forEach((input) => {
-      input.addEventListener("change", () => {
-        state.campaign.sendMode = input.value;
-        syncModeCards();
+    elements.downloadButton.addEventListener("click", handleDownload);
+    elements.copyButton.addEventListener("click", handleCopy);
+    document.getElementById("edit-message-button").addEventListener("click", () => {
+      document.getElementById("campaign-message").focus();
+      document.getElementById("campaign-message").scrollIntoView({ block: "center" });
+    });
+    elements.campaignForm.addEventListener("submit", (event) => event.preventDefault());
+    window.addEventListener("hashchange", () => showView(true));
+    document.querySelectorAll("[data-message]").forEach((button) => {
+      button.addEventListener("click", () => {
+        state.campaign.message = button.dataset.message;
+        document.getElementById("campaign-message").value = state.campaign.message;
         persistState();
         updatePreview();
       });
     });
+    document.getElementById("clear-selection-button").addEventListener("click", () => {
+      state.campaign.selectedGroupId = "";
+      state.campaign.selectedContactIds = [];
+      render();
+    });
+  }
+
+  function showView(focus) {
+    const name = window.location.hash.slice(1);
+    const view = ["today", "contacts", "settings"].includes(name) ? name : "today";
+    document.querySelectorAll("[data-view]").forEach((section) => {
+      section.hidden = section.id !== view;
+    });
+    document.querySelectorAll("[data-view-link]").forEach((link) => {
+      if (link.dataset.viewLink === view) link.setAttribute("aria-current", "page");
+      else link.removeAttribute("aria-current");
+    });
+    if (focus) {
+      document.getElementById(`${view}-title`).focus({ preventScroll: true });
+      window.scrollTo(0, 0);
+    }
+  }
+
+  function emptyState() {
+    return {
+      contacts: [], groups: [],
+      campaign: { ...sampleState.campaign, sender: "", selectedGroupId: "", selectedContactIds: [] }
+    };
   }
 
   function loadState() {
     try {
       const stored = storage.getState();
       if (!stored) {
-        return deepClone(sampleState);
+        return emptyState();
       }
 
       const parsed = JSON.parse(stored);
@@ -83,24 +132,35 @@
         contacts: Array.isArray(parsed.contacts) ? parsed.contacts : [],
         groups: Array.isArray(parsed.groups) ? parsed.groups : [],
         campaign: {
-          title: parsed.campaign?.title || sampleState.campaign.title,
-          sender: parsed.campaign?.sender || sampleState.campaign.sender,
-          message: parsed.campaign?.message || sampleState.campaign.message,
+          title: parsed.campaign?.title ?? sampleState.campaign.title,
+          sender: parsed.campaign?.sender ?? "",
+          message: parsed.campaign?.message ?? sampleState.campaign.message,
           selectedGroupId: parsed.campaign?.selectedGroupId || "",
           selectedContactIds: Array.isArray(parsed.campaign?.selectedContactIds)
             ? parsed.campaign.selectedContactIds
             : [],
-          sendMode: parsed.campaign?.sendMode === "official-channel" ? "official-channel" : "share-sheet"
+          sendMode: "share-sheet"
         }
       };
     } catch (error) {
-      console.error("Failed to load state", error);
-      return deepClone(sampleState);
+      loadFailed = true;
+      return emptyState();
     }
   }
 
   function persistState() {
-    storage.setState(JSON.stringify(state));
+    try {
+      if (loadFailed) throw new Error("Stored data could not be loaded");
+      storage.setState(JSON.stringify(state));
+      elements.draftStatus.textContent = "已儲存於此裝置";
+      elements.storageWarning.hidden = true;
+    } catch (error) {
+      elements.draftStatus.textContent = "尚未儲存";
+      elements.storageWarning.textContent = loadFailed
+        ? "原有資料無法讀取，未覆蓋舊資料。目前仍可製作圖片，但新變更不會儲存。請勿重新整理；可在設定還原備份，或確認不需舊資料後清空重試。"
+        : "這台裝置暫時無法儲存資料。請勿關閉頁面或更新；目前的祝福仍可分享或下載。";
+      elements.storageWarning.hidden = false;
+    }
   }
 
   function render() {
@@ -108,7 +168,6 @@
     renderGroups();
     renderGroupPickers();
     fillCampaignFields();
-    syncModeCards();
     updatePreview();
     persistState();
   }
@@ -184,11 +243,12 @@
       })
       .join("");
 
+    const pendingMembers = new Set(Array.from(elements.groupMembersPicker.querySelectorAll("input:checked"), (input) => input.value));
     const groupPickerHtml = state.contacts
       .map((contact) => {
         return `
           <label class="picker-chip">
-            <input type="checkbox" data-role="group-member" value="${escapeHtml(contact.id)}">
+            <input type="checkbox" data-role="group-member" value="${escapeHtml(contact.id)}" ${pendingMembers.has(contact.id) ? "checked" : ""}>
             <span>${escapeHtml(contact.name)}</span>
           </label>
         `;
@@ -197,10 +257,10 @@
 
     elements.groupMembersPicker.innerHTML = groupPickerHtml || '<p class="empty-state">先建立聯絡人，才能建立群組。</p>';
     elements.campaignRecipientsPicker.innerHTML =
-      contactPickerHtml || '<p class="empty-state">先建立聯絡人，才能選發送對象。</p>';
+      contactPickerHtml || '<p class="empty-state">還沒有名單也沒關係，分享時直接在 LINE 選親友就好。</p>';
 
     elements.campaignGroup.innerHTML = [
-      '<option value="">不套用群組</option>',
+      '<option value="">自己勾選</option>',
       ...state.groups.map((group) => {
         const selected = group.id === state.campaign.selectedGroupId ? "selected" : "";
         return `<option value="${escapeHtml(group.id)}" ${selected}>${escapeHtml(group.name)}</option>`;
@@ -216,34 +276,23 @@
     document.getElementById("campaign-title").value = state.campaign.title;
     document.getElementById("campaign-sender").value = state.campaign.sender;
     document.getElementById("campaign-message").value = state.campaign.message;
-    const sendModeInput = Array.from(document.querySelectorAll('input[name="send-mode"]'))
-      .find((input) => input.value === state.campaign.sendMode);
-    (sendModeInput || document.querySelector('input[name="send-mode"][value="share-sheet"]')).checked = true;
   }
 
   function handleSeedData() {
+    if (!window.confirm("示範名單會取代目前的名單與草稿。請先備份，確定要載入嗎？")) return;
+    loadFailed = false;
     Object.assign(state, deepClone(sampleState));
     render();
     setStatus("已載入示範名單，方便你直接試流程。");
   }
 
   function handleResetData() {
-    if (!window.confirm("確定要清空本地資料嗎？")) {
+    if (!window.confirm("確定要清空名單與草稿嗎？此操作無法復原，建議先下載備份。")) {
       return;
     }
 
-    Object.assign(state, {
-      contacts: [],
-      groups: [],
-      campaign: {
-        title: sampleState.campaign.title,
-        sender: sampleState.campaign.sender,
-        message: sampleState.campaign.message,
-        selectedGroupId: "",
-        selectedContactIds: [],
-        sendMode: "share-sheet"
-      }
-    });
+    loadFailed = false;
+    Object.assign(state, emptyState());
 
     render();
     setStatus("本地資料已清空。");
@@ -261,6 +310,11 @@
       return;
     }
 
+    if (state.contacts.length >= 500) {
+      setStatus("親友名單最多可保留 500 位，請先整理再新增。");
+      return;
+    }
+
     state.contacts.unshift({
       id: createId("c"),
       name,
@@ -275,6 +329,10 @@
 
   function handleAddGroup(event) {
     event.preventDefault();
+    if (state.groups.length >= 100) {
+      setStatus("常用名單最多可保留 100 組，請先整理再新增。");
+      return;
+    }
     const form = new FormData(event.currentTarget);
     const name = String(form.get("name") || "").trim();
     const selectedIds = Array.from(elements.groupMembersPicker.querySelectorAll('[data-role="group-member"]:checked')).map(
@@ -303,6 +361,7 @@
   }
 
   function removeContact(contactId) {
+    if (!window.confirm(`確定刪除「${findContact(contactId)?.name}」？也會從常用名單中移除。`)) return;
     state.contacts = state.contacts.filter((contact) => contact.id !== contactId);
     state.groups = state.groups
       .map((group) => ({
@@ -321,6 +380,7 @@
   }
 
   function removeGroup(groupId) {
+    if (!window.confirm(`確定刪除「${findGroup(groupId)?.name}」這份名單？親友資料仍會保留。`)) return;
     state.groups = state.groups.filter((group) => group.id !== groupId);
     if (state.campaign.selectedGroupId === groupId) {
       state.campaign.selectedGroupId = "";
@@ -350,7 +410,6 @@
       applyGroupSelection(target.value);
     }
 
-    syncModeCards();
     persistState();
     updatePreview();
   }
@@ -396,40 +455,27 @@
   }
 
   async function handleShare() {
-    const recipients = getSelectedRecipients();
-    if (recipients.length === 0) {
-      setStatus("請先至少選擇一位收件者。");
+    if (sharing || !shareFile) return;
+    if (!canShareFiles([shareFile])) {
+      handleDownload();
       return;
     }
-
+    sharing = true;
+    updateActionButtons();
     try {
-      const payload = await buildSharePayload();
-
-      if (canShareFiles(payload.files)) {
-        await navigator.share(payload);
-        setStatus(`已開啟系統分享面板，接下來請在 LINE 或 iMessage 選擇 ${recipients.length} 位對象。`);
-        return;
-      }
-
-      if (navigator.share) {
-        await navigator.share({
-          title: payload.title,
-          text: payload.text
-        });
-        setStatus("裝置支援文字分享，但不一定支援圖片檔；已先叫出分享面板，接下來請手動挑私人聊天對象。");
-        return;
-      }
-
-      await fallbackDownload(payload.files[0], payload.text);
-      setStatus("此裝置不支援原生分享，已改成下載圖片並複製文字，請再用 LINE 或 iMessage 手動傳送。");
+      // The file is prepared before the click to preserve transient user activation.
+      await navigator.share({ files: [shareFile] });
+      setShareStatus("已交給分享面板。是否送出請以 LINE 聊天室為準；本程式無法確認送達。");
     } catch (error) {
       if (error && error.name === "AbortError") {
-        setStatus("已取消分享。");
+        setShareStatus("已取消分享，圖片和祝福都還在，可以再試一次。");
         return;
       }
 
-      console.error("share failed", error);
-      setStatus("分享失敗，已改建議使用匯出發送批次。");
+      setShareStatus("暫時無法開啟分享。請按「下載圖片」，再到 LINE 選擇圖片傳送。");
+    } finally {
+      sharing = false;
+      updateActionButtons();
     }
   }
 
@@ -456,25 +502,25 @@
       JSON.stringify(batch, null, 2)
     );
 
-    setStatus(`已匯出 ${recipients.length} 位收件者的發送批次 JSON。`);
+    setStatus(`已下載 ${recipients.length} 位親友的備忘名單，這不代表已送出訊息。檔案包含親友資料，請妥善保管。`);
   }
 
   function updatePreview() {
     const recipients = getSelectedRecipients();
-    elements.selectedCount.textContent = `${recipients.length} 位收件者`;
-    elements.previewSummary.textContent =
-      recipients.length > 0
-        ? `${state.campaign.title}，由 ${state.campaign.sender} 發送給 ${recipients.length} 位對象`
-        : "尚未選擇收件者";
+    elements.selectedCount.textContent = recipients.length ? `記下 ${recipients.length} 位` : "選填";
+    elements.previewSummary.textContent = `早安。${getGreetingText()}`;
+    elements.previewCanvas.setAttribute("aria-label", elements.previewSummary.textContent);
+    document.getElementById("message-count").textContent = `${state.campaign.message.length} / 500`;
 
     elements.recipientPreview.innerHTML = recipients
       .map((recipient) => `<li>${escapeHtml(recipient.name)}</li>`)
       .join("");
 
-    drawPreview(recipients);
+    drawPreview();
+    prepareShareFile();
   }
 
-  function drawPreview(recipients) {
+  function drawPreview() {
     const canvas = elements.previewCanvas;
     const context = canvas.getContext("2d");
     const width = canvas.width;
@@ -502,49 +548,72 @@
     context.font = "bold 120px 'Noto Sans TC', 'PingFang TC', sans-serif";
     context.fillText("早安", 90, 190);
 
-    context.font = "600 42px 'Noto Sans TC', 'PingFang TC', sans-serif";
-    wrapText(context, state.campaign.message, 92, 280, width - 180, 58);
-
-    context.fillStyle = "rgba(255,248,234,0.85)";
-    context.font = "600 32px 'Noto Sans TC', 'PingFang TC', sans-serif";
-    context.fillText(`收件對象：${recipients.length} 位`, 92, 492);
+    let fontSize = 64;
+    let lines;
+    do {
+      context.font = `600 ${fontSize}px 'Noto Sans TC', 'PingFang TC', sans-serif`;
+      lines = wrapText(context, state.campaign.message, width - 184);
+      if (lines.length * fontSize * 1.38 <= 252 || fontSize <= 18) break;
+      fontSize -= 2;
+    } while (true);
+    const maxLines = Math.floor(252 / (fontSize * 1.38));
+    const visibleLines = lines.slice(0, maxLines);
+    if (lines.length > maxLines) {
+      visibleLines[maxLines - 1] = visibleLines[maxLines - 1].slice(0, -1) + "…";
+    }
+    visibleLines.forEach((line, index) => context.fillText(line, 92, 262 + index * fontSize * 1.38));
+    document.getElementById("message-hint").textContent = lines.length > maxLines
+      ? "文字太長，圖片末尾已省略。請縮短祝福，或另按「複製祝福文字」取得全文。"
+      : fontSize < 32 ? "文字較多，圖上的字會縮小。短一點的祝福更容易閱讀。" : "修改文字，圖片會一起更新。";
 
     context.fillStyle = "#fff8ea";
-    context.font = "700 34px 'Noto Sans TC', 'PingFang TC', sans-serif";
-    context.fillText(`來自 ${state.campaign.sender}`, 92, 546);
+    context.font = "700 52px 'Noto Sans TC', 'PingFang TC', sans-serif";
+    if (state.campaign.sender.trim()) context.fillText(`來自 ${state.campaign.sender.trim()}`, 92, 558, width - 184);
   }
 
-  async function buildSharePayload() {
-    const recipients = getSelectedRecipients();
-    const text = [
-      state.campaign.message,
-      "",
-      `這次預計送給：${recipients.map((recipient) => recipient.name).join("、")}`,
-      `發送人：${state.campaign.sender}`
-    ].join("\n");
-
-    const file = await canvasToFile(elements.previewCanvas, "zaoan-placeholder.png");
-
-    return {
-      title: state.campaign.title,
-      text,
-      files: [file]
-    };
+  async function prepareShareFile() {
+    const version = ++previewVersion;
+    shareFile = null;
+    updateActionButtons();
+    try {
+      const file = await canvasToFile(elements.previewCanvas, "zaoan-greeting.png");
+      if (version !== previewVersion) return;
+      shareFile = file;
+      updateActionButtons();
+    } catch (error) {
+      if (version !== previewVersion) return;
+      elements.shareButton.textContent = "圖片尚未準備好";
+      setShareStatus("圖片製作失敗，請修改文字再試一次。也可以先複製祝福文字。");
+    }
   }
 
   function canShareFiles(files) {
-    return Boolean(navigator.canShare && files && files.length && navigator.canShare({ files }));
+    try {
+      return Boolean(navigator.share && navigator.canShare && files.length && navigator.canShare({ files }));
+    } catch (error) {
+      return false;
+    }
   }
 
-  async function fallbackDownload(file, text) {
-    downloadBlob(file.name, file, file.type);
+  function getGreetingText() {
+    return [state.campaign.message.trim(), state.campaign.sender.trim() ? `來自 ${state.campaign.sender.trim()}` : ""].filter(Boolean).join("\n\n");
+  }
 
-    if (navigator.clipboard?.writeText) {
-      try {
-        await navigator.clipboard.writeText(text);
-      } catch (error) {
-        console.error("clipboard failed", error);
-      }
+  function handleDownload() {
+    if (!shareFile || sharing) return;
+    downloadBlob(shareFile.name, shareFile, shareFile.type);
+    setShareStatus("已開始下載圖片。iPhone 可從「檔案」打開圖片再分享至 LINE；電腦可在 LINE 附加下載的圖片。");
+  }
+
+  async function handleCopy() {
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
+      await navigator.clipboard.writeText(getGreetingText());
+      setShareStatus("已複製祝福與署名。到 LINE 長按輸入框，再選「貼上」。");
+    } catch (error) {
+      document.getElementById("campaign-message").focus();
+      document.getElementById("campaign-message").select();
+      setShareStatus("無法自動複製。已選取祝福文字，請長按或使用複製快捷鍵；署名需另外複製。");
     }
   }
 
@@ -560,17 +629,14 @@
       }));
   }
 
-  function syncModeCards() {
-    document.querySelectorAll("[data-mode-card]").forEach((card) => {
-      card.classList.toggle("active", card.dataset.modeCard === state.campaign.sendMode);
-    });
-    updateActionButtons();
-  }
-
   function updateActionButtons() {
-    const shareMode = state.campaign.sendMode === "share-sheet";
-    elements.shareButton.disabled = !shareMode;
-    elements.shareButton.textContent = shareMode ? "分享到私人帳號" : "批次匯出模式下請改用匯出";
+    elements.shareButton.disabled = sharing || !shareFile;
+    elements.downloadButton.disabled = sharing || !shareFile;
+    const nativeShare = shareFile && canShareFiles([shareFile]);
+    elements.shareButton.textContent = sharing ? "分享面板使用中…" : !shareFile ? "正在準備圖片…" : nativeShare ? "分享圖片・下一步選 LINE" : "下載早安圖，再到 LINE 傳送";
+    if (shareFile) elements.shareHelp.textContent = nativeShare
+      ? "下一步：選 LINE → 選親友 → 在 LINE 送出。"
+      : "這個瀏覽器無法直接分享圖片，下載後仍可自行傳送。";
   }
 
   function findContact(contactId) {
@@ -588,7 +654,7 @@
       email: "Email",
       unknown: "未確認"
     };
-    return mapping[channel] || "未確認";
+    return Object.hasOwn(mapping, channel) ? mapping[channel] : "未確認";
   }
 
   function createId(prefix) {
@@ -601,28 +667,38 @@
 
   function setStatus(message) {
     elements.statusBox.textContent = message;
+    elements.statusBox.scrollIntoView({ block: "nearest" });
   }
 
-  function wrapText(context, text, x, y, maxWidth, lineHeight) {
-    const words = Array.from(text);
+  function setShareStatus(message) {
+    elements.shareResult.textContent = message;
+  }
+
+  function wrapText(context, text, maxWidth) {
+    const words = Array.from(text.replaceAll("\r", ""));
+    const lines = [];
     let line = "";
-    let offset = 0;
 
     for (const word of words) {
+      if (word === "\n") {
+        lines.push(line);
+        line = "";
+        continue;
+      }
       const testLine = `${line}${word}`;
       const { width } = context.measureText(testLine);
       if (width > maxWidth && line) {
-        context.fillText(line, x, y + offset);
+        lines.push(line);
         line = word;
-        offset += lineHeight;
       } else {
         line = testLine;
       }
     }
 
     if (line) {
-      context.fillText(line, x, y + offset);
+      lines.push(line);
     }
+    return lines;
   }
 
   async function canvasToFile(canvas, filename) {
