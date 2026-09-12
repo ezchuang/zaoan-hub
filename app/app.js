@@ -24,6 +24,8 @@
   };
 
   let loadFailed = false;
+  let storedSnapshot = null;
+  let storageConflict = false;
   let shareFile = null;
   let previewVersion = 0;
   let sharing = false;
@@ -61,6 +63,12 @@
 
   bindEvents();
   render();
+  window.ZaoanApp = Object.freeze({
+    getState() {
+      if (loadFailed) throw new Error("原有資料無法讀取，請先修復或還原備份，避免把空白資料當成備份");
+      return deepClone(state);
+    }
+  });
   showView(false);
   document.getElementById("today-date").textContent = new Intl.DateTimeFormat("zh-TW", {
     month: "long", day: "numeric", weekday: "long"
@@ -82,6 +90,16 @@
     });
     elements.campaignForm.addEventListener("submit", (event) => event.preventDefault());
     window.addEventListener("hashchange", () => showView(true));
+    window.addEventListener("zaoan:before-reload", (event) => {
+      const pendingForm = ["contact-name", "contact-note", "group-name"].some((id) => document.getElementById(id).value.trim())
+        || elements.groupMembersPicker.querySelector("input:checked");
+      if (sharing || (pendingForm && !event.detail?.discardForms)) {
+        event.preventDefault();
+        setStatus(sharing ? "分享面板使用中，暫不重新開啟頁面。" : "尚有未新增的親友或未建立的名單，暫不重新開啟。請先完成表單，或在更新時確認捨棄這些輸入。");
+        return;
+      }
+      if (!persistState()) event.preventDefault();
+    });
     document.querySelectorAll("[data-message]").forEach((button) => {
       button.addEventListener("click", () => {
         state.campaign.message = button.dataset.message;
@@ -114,34 +132,18 @@
   }
 
   function emptyState() {
-    return {
-      contacts: [], groups: [],
-      campaign: { ...sampleState.campaign, sender: "", selectedGroupId: "", selectedContactIds: [] }
-    };
+    return window.ZaoanState.createEmpty();
   }
 
   function loadState() {
     try {
       const stored = storage.getState();
+      storedSnapshot = stored;
       if (!stored) {
         return emptyState();
       }
 
-      const parsed = JSON.parse(stored);
-      return {
-        contacts: Array.isArray(parsed.contacts) ? parsed.contacts : [],
-        groups: Array.isArray(parsed.groups) ? parsed.groups : [],
-        campaign: {
-          title: parsed.campaign?.title ?? sampleState.campaign.title,
-          sender: parsed.campaign?.sender ?? "",
-          message: parsed.campaign?.message ?? sampleState.campaign.message,
-          selectedGroupId: parsed.campaign?.selectedGroupId || "",
-          selectedContactIds: Array.isArray(parsed.campaign?.selectedContactIds)
-            ? parsed.campaign.selectedContactIds
-            : [],
-          sendMode: "share-sheet"
-        }
-      };
+      return window.ZaoanState.normalize(JSON.parse(stored));
     } catch (error) {
       loadFailed = true;
       return emptyState();
@@ -151,15 +153,26 @@
   function persistState() {
     try {
       if (loadFailed) throw new Error("Stored data could not be loaded");
-      storage.setState(JSON.stringify(state));
-      elements.draftStatus.textContent = "已儲存於此裝置";
+      if (storage.getState() !== storedSnapshot) {
+        storageConflict = true;
+        throw new Error("Another tab changed the stored data");
+      }
+      const serialized = JSON.stringify(state);
+      storage.setState(serialized);
+      storedSnapshot = serialized;
+      storageConflict = false;
+      elements.draftStatus.textContent = storage.isSharedDeviceMode() ? "已儲存於此分頁" : "已儲存於此裝置";
       elements.storageWarning.hidden = true;
+      return true;
     } catch (error) {
       elements.draftStatus.textContent = "尚未儲存";
-      elements.storageWarning.textContent = loadFailed
+      elements.storageWarning.textContent = storageConflict
+        ? "其他分頁已變更或移動資料，這個分頁暫停儲存，避免蓋掉新資料。請先在設定下載本分頁的備份，再重新整理取得最新資料。"
+        : loadFailed
         ? "原有資料無法讀取，未覆蓋舊資料。目前仍可製作圖片，但新變更不會儲存。請勿重新整理；可在設定還原備份，或確認不需舊資料後清空重試。"
         : "這台裝置暫時無法儲存資料。請勿關閉頁面或更新；目前的祝福仍可分享或下載。";
       elements.storageWarning.hidden = false;
+      return false;
     }
   }
 
@@ -169,7 +182,7 @@
     renderGroupPickers();
     fillCampaignFields();
     updatePreview();
-    persistState();
+    return persistState();
   }
 
   function renderContacts() {
@@ -280,10 +293,10 @@
 
   function handleSeedData() {
     if (!window.confirm("示範名單會取代目前的名單與草稿。請先備份，確定要載入嗎？")) return;
-    loadFailed = false;
+    if (!allowExplicitReplacement()) return;
     Object.assign(state, deepClone(sampleState));
-    render();
-    setStatus("已載入示範名單，方便你直接試流程。");
+    const saved = render();
+    setStatus(saved ? "已載入示範名單，方便你直接試流程。" : "示範名單已載入此頁，但尚未儲存。請查看上方提示。");
   }
 
   function handleResetData() {
@@ -291,11 +304,23 @@
       return;
     }
 
-    loadFailed = false;
+    if (!allowExplicitReplacement()) return;
     Object.assign(state, emptyState());
 
-    render();
-    setStatus("本地資料已清空。");
+    const saved = render();
+    setStatus(saved ? "本程式使用中的名單與草稿已清空。" : "無法清空裝置上的資料。請勿把此頁的空白名單視為已刪除，請查看上方提示。");
+  }
+
+  function allowExplicitReplacement() {
+    try {
+      storedSnapshot = storage.getState();
+      loadFailed = false;
+      storageConflict = false;
+      return true;
+    } catch (error) {
+      setStatus("目前無法讀取裝置資料，未執行取代或清空。");
+      return false;
+    }
   }
 
   function handleAddContact(event) {
@@ -548,14 +573,29 @@
     context.font = "bold 120px 'Noto Sans TC', 'PingFang TC', sans-serif";
     context.fillText("早安", 90, 190);
 
+    const layout = (size) => {
+      context.font = `600 ${size}px 'Noto Sans TC', 'PingFang TC', sans-serif`;
+      return wrapText(context, state.campaign.message, width - 184);
+    };
     let fontSize = 64;
-    let lines;
-    do {
-      context.font = `600 ${fontSize}px 'Noto Sans TC', 'PingFang TC', sans-serif`;
-      lines = wrapText(context, state.campaign.message, width - 184);
-      if (lines.length * fontSize * 1.38 <= 252 || fontSize <= 18) break;
-      fontSize -= 2;
-    } while (true);
+    let lines = layout(fontSize);
+    if (lines.length * fontSize * 1.38 > 252) {
+      // Find a readable fit without remeasuring the entire message at every size.
+      let low = 18;
+      let high = 62;
+      fontSize = low;
+      while (low <= high) {
+        const size = Math.floor((low + high) / 4) * 2;
+        const candidate = layout(size);
+        if (candidate.length * size * 1.38 <= 252) {
+          fontSize = size;
+          low = size + 2;
+        } else {
+          high = size - 2;
+        }
+      }
+      lines = layout(fontSize);
+    }
     const maxLines = Math.floor(252 / (fontSize * 1.38));
     const visibleLines = lines.slice(0, maxLines);
     if (lines.length > maxLines) {

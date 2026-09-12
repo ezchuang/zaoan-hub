@@ -1,195 +1,116 @@
-# Zaoan Hub
+# 早安小幫手 · Zaoan Hub
 
-一個給長輩使用的早安圖群發 MVP。這個版本先解決三件事：
+給長輩使用的私人帳號早安圖分享輔助工具。寫一句祝福、預覽圖片，再透過手機分享面板選 LINE 與親友。
 
-1. 用 browser 管理聯絡人與常用群組
-2. 在 iPhone / iPad / 公務電腦上用同一套介面操作
-3. 把「發送名單」與「真正送出訊息」拆開，避免一開始就被特定通訊平台綁死
+**不是 LINE 自動群發工具。** 本程式不登入 LINE、不讀取 LINE 通訊錄、不替 LINE 選人，也無法確認訊息是否送達。網站中的親友名單是私人的問候備忘，不會附在分享圖片或文字裡。
 
-目前不處理圖片上傳或內建圖庫，介面會先產生一張 placeholder 早安圖，驗證整體流程。
+## 日常使用
 
-## 為什麼先做成 browser app
+1. 打開「今日早安」，直接看預覽或按「修改祝福」。
+2. 改寫祝福、選一句快捷祝福，或填上署名；不必先建立名單。
+3. 按「分享圖片」，在系統面板選 LINE，再由使用者選朋友或群組並送出。
+4. 回 LINE 聊天室確認結果。若不能直接分享圖片，就下載圖片後自行附加傳送。
 
-已知限制是：
+「我的名單」管理親友與常用名單；「設定與備份」集中備份、共用裝置模式、離線狀態與示範資料。首次開啟不會自動填入假親友，舊版名單與草稿則沿用。
 
-- 長輩可能只有公務電腦，不適合安裝桌面軟體
-- 長輩有 iOS 手機
+圖片仍使用本機 canvas 產生的簡易版型，沒有新增上傳或圖庫。長文字會自動調整大小；放不下時會明確提示省略，完整文字可另外複製。
 
-因此 MVP 先採用 browser-first：
+## 啟動
 
-- 公務電腦：用瀏覽器維護聯絡人、群組、發送清單
-- iPhone：用 Safari 開啟同一套系統，直接用 Web Share API 叫出系統分享面板
-- 若使用者願意，可把網站加入主畫面，接近 App 體驗，但仍不需要上架或安裝企業版 App
-
-## 目前專案內容
-
-- `app/index.html`: 單頁介面
-- `app/guide.html`: iPhone 真機安裝導引頁與首次使用清單
-- `app/styles.css`: 針對長輩操作設計的高對比、大按鈕 UI
-- `app/storage.js`: 統一管理永久儲存與共用裝置 session 儲存
-- `app/app.js`: 本地資料管理、群組管理、發送預覽、iOS share-sheet 流程
-- `app/data-transfer.js`: 全資料匯出 / 匯入，方便在公務電腦與 iPhone 之間搬移名單
-- `app/privacy.js`: 共用裝置模式切換與 privacy 狀態提示
-- `app/guide.js`: 導引頁狀態偵測、首次使用清單、真機安裝提示
-- `app/pwa.js`: PWA 安裝狀態、離線快取狀態、主畫面模式偵測
-- `app/sw.js`: service worker，負責 app shell 快取與離線 fallback
-- `app/manifest.webmanifest`: 方便加入 iOS 主畫面
-- `app/icon.svg`: 基本 icon
-- `server.py`: 不依賴第三方套件的本地開發 server
-
-## 啟動方式
+Python 3 即可，不需要安裝 Web framework、打包工具或桌面 App：
 
 ```powershell
-cd C:\code\zaoan-hub
 python server.py
 ```
 
-預設會開在 `http://127.0.0.1:8765`。
+在瀏覽器開啟 [本機預覽](http://127.0.0.1:8765/)。預設只監聽本機，不會開放區域網路存取。
 
-## 離線 / 不靠 server 的範圍
+正式 iPhone 使用需要可連線的 HTTPS 網址。手機的 localhost 是手機自己，不是這台電腦。此 server 是開發用途，不應直接作為公開 production server。
 
-這一版已經補成 PWA，意思是：
+## iPhone 首次使用
 
-- 第一次仍要透過一個網址載入頁面
-- 之後可加入 iPhone 主畫面，像獨立 App 一樣開啟
-- 只要這個版本曾成功快取，後續可在沒有 server 的情況下離線使用
+開啟 [安裝導引](http://127.0.0.1:8765/guide.html) 可查看完整流程；正式部署後請使用對應的 HTTPS 網址。
 
-但要注意，這裡的「不靠 server」只適用於前端本機操作：
+1. 在 Safari 開啟網址，不要留在 LINE 的內建瀏覽器。
+2. 從 Safari 分享選單選「加入主畫面」，再從主畫面圖示開啟。
+3. 等待顯示「已準備好離線使用」，確認 LINE 已登入自己的帳號，再試著分享一張圖片並回聊天室確認。
 
-- 可離線：聯絡人、群組、早安圖產生、匯出批次
-- 可離線：全資料備份與還原
-- 不可完全離線：真正送到 LINE / iMessage / Email、跨裝置同步、真正自動排程
+Safari 與主畫面版本不應假設一定共用同一份資料；若資料不同，請在實際要使用的版本還原備份。安裝導引中的手動勾選是使用者確認，不是程式已偵測到安裝成功或 LINE 已送達。
 
-## 私人帳號模式
+## 離線與更新
 
-這個專案現在優先對準的是：
+- 首次載入、第一次下載離線檔案，以及取得新版本仍需要網址與網路。
+- 檔案完整快取後，寫祝福、產圖、管理名單與備份可離線使用。LINE 真正送出仍需要網路。
+- 新版先完整下載，顯示更新提示；使用者確認後才重新開啟，不會在輸入中自動替換畫面。
+- HTML、CSS 與 JavaScript 使用同一個快取版本，避免新頁面混到舊程式。
+- 更新下載失敗時保留可用的舊版；不清除其他應用程式或其他部署路徑的快取。
+- 早期 v1-v5 若已混用新頁面與舊程式，會顯示「保留名單並更新」的相容入口，不要求清除使用者資料。
+- 快取可能被瀏覽器清除，不能把「加入主畫面」當成資料備份。
 
-- 用你自己的 LINE / iMessage 私人帳號送出
-- 由 Zaoan Hub 幫你整理名單、群組、圖文與分享前流程
-- 最後一步仍由 iPhone 分享面板進入 LINE，再由你自己選朋友或群組
+每次修改 app shell 都需要遞增 `app/sw.js` 的 cache version。正式部署時應完整發布同一個版本的檔案，避免使用者在只更新一部分檔案時下載新版。
 
-也就是說，這一版不是在做 LINE Official Account 廣播，而是在做「私人帳號分享輔助」。
+## 資料與隱私
 
-## 沒有 server 時，怎麼換手機或搬資料
+名單、群組與草稿預設保留在目前瀏覽器的 `localStorage`，沒有帳號、追蹤分析、後端同步或自動排程。
 
-這一版已補上 `匯出全部資料` / `匯入全部資料`：
+- 「下載全部資料備份」產生 JSON，包含親友姓名、備註、常用名單與草稿，請妥善保管。
+- 「從備份還原」先驗證內容，再顯示親友與名單數量並確認取代；不是合併資料。
+- 保留 schema version 1 與舊版完整 raw state 的匯入相容性；原本刻意留白的署名不會被自動補成假名字。
+- 本機資料也使用與匯入相同的驗證。損壞資料不會被空白狀態悄悄覆蓋。
+- 儲存失敗會顯示警告；若已成功讀取舊資料但後續空間不足，仍可備份此頁最新的記憶體草稿。
+- 偵測到另一分頁修改或移動資料後，舊分頁會停止覆寫並提醒先備份再重新整理。這不是完整的多使用者同步或交易機制。
 
-1. 在公務電腦整理好聯絡人與群組
-2. 按 `匯出全部資料` 下載 JSON
-3. 把 JSON 傳到 iPhone
-4. 在 iPhone 的 Zaoan Hub 按 `匯入全部資料`
+### 公務或共用電腦
 
-這樣即使沒有後端同步，還是能把名單搬到手機本機使用。
+先關閉本程式的其他分頁，再從設定啟用「共用裝置模式」。使用中的資料改存到目前分頁的 `sessionStorage`，並移除原本的永久名單資料。
 
-## 公務或共用電腦
+這不是加密、PIN lock 或保證關閉即清除。瀏覽器還原分頁仍可能保留 session；離開前請備份、清空資料、關閉相關分頁，也要自行處理下載的備份檔。不要在不可信任的電腦輸入敏感資料。
 
-主頁可切換 `共用裝置模式`：
+## 安全邊界
 
-- 聯絡人、群組與草稿改存到 `sessionStorage`
-- 不寫入永久 `localStorage`；page session 結束後通常會由 browser 清除
-- 切換時會把原本的永久資料移出 `localStorage`
-- 離開前應先按 `匯出全部資料` 備份
+保留嚴格 CSP、HTML escaping、匯入檔案 1 MB 上限、500 位親友與 100 組名單上限、ID／欄位長度／關聯驗證，以及 service worker app-shell allowlist。
 
-這個模式降低共用電腦留下聯絡人資料的風險，但不是 encryption 或 PIN lock，而且 browser session restore 仍可能保留 session；仍不應在不可信任的裝置上輸入高度敏感資訊。
+圖片分享只交付 PNG，不夾帶備忘名單、其他親友姓名或備註；「複製祝福文字」只複製祝福與署名。另行匯出的備忘名單、完整備份則包含親友資料，介面有明確提醒。
 
-## iPhone 安裝方式
+`server.py` 提供 CSP、nosniff、frame protection、Referrer Policy 與 Permissions Policy headers。正式 static hosting 應配置同等 HTTP headers，不能只依賴 HTML 的 CSP meta tag。
 
-1. 用 Safari 打開部署好的 HTTPS 網址
-2. 等頁面顯示 `離線快取已啟用`
-3. 點 Safari 分享按鈕，選 `加入主畫面`
-4. 之後從主畫面打開，即可離線進入已快取版本
+## 開發與驗證
 
-開發時可用 `http://127.0.0.1:8765` 測試；正式上線要讓 iPhone 正常安裝與更新，仍建議使用 HTTPS。
+前端不增加 runtime dependencies。資料驗證測試只需要 Node.js：
 
-## Security hardening
+```powershell
+node --test tests/state.test.cjs
+```
 
-目前前端與開發 server 已加入：
+瀏覽器回歸測試需要可解析的既有 `playwright` 套件與瀏覽器。Windows 預設使用已安裝的 Microsoft Edge；其他系統預設使用 Playwright Chromium。可用 `BROWSER_CHANNEL` 指定其他已安裝的 channel，或用 `NODE_PATH` 指向既有的 node_modules。
 
-- 嚴格的 JSON 匯入 schema、數量、欄位長度與 ID 驗證
-- HTML attribute escaping，避免匯入資料形成 stored DOM XSS
-- `Content-Security-Policy`、`X-Content-Type-Options`、`X-Frame-Options`、`Referrer-Policy` 與 `Permissions-Policy`
-- `service worker` app-shell allowlist，不會快取未列入清單的 same-origin API 或頁面
-- `共用裝置模式`，避免公務電腦永久保留聯絡人資料
+先啟動本機 server，再於另一個終端執行：
 
-正式部署到 GitHub Pages、Cloudflare Pages、Netlify 或其他 static hosting 時，應在 hosting 層重設相同的 security headers。HTML 內建的 CSP 是 fallback，不能取代完整的 HTTP response headers。
+```powershell
+node --test tests/*.test.cjs
+```
 
-## 真機安裝導引頁
+`TEST_URL` 可改用其他本機 port，但測試拒絕非 localhost 網址。所有測試使用獨立的暫存 browser context，不會操作個人瀏覽器資料或真的傳送 LINE 訊息。更新測試另外啟動暫時的本機 server，模擬子目錄部署與安裝失敗。
 
-可直接把這頁傳給手機：
+驗證範圍包括手機／桌面寬度、200% 文字、草稿保存、PNG 下載、分享取消／失敗、親友名單、備份還原、異常儲存、共用裝置、離線與更新。畫面截圖輸出至 `.test-artifacts/`，不納入 Git。
 
-- `https://<your-host>/guide.html`
+### 真機驗收仍必須完成
 
-導引頁會做三件事：
+- Safari 與加入主畫面後的安裝圖示、文字大小、鍵盤、返回操作。
+- 分享面板能否找到 LINE、能否帶入圖片、手動多選對象與取消後返回。
+- 從 LINE 聊天室確認圖片與署名正確，沒有其他收件人的資料。
+- 飛航模式重開主程式與導引頁，再恢復網路更新。
+- 在實際使用的主畫面版本完成備份與還原。
 
-1. 檢查目前是不是從 Safari / 主畫面模式開啟
-2. 提示離線快取是否已完成
-3. 提供 iPhone 首次使用清單，包含 LINE 可用、資料匯入、分享測試
+桌面瀏覽器的 viewport 模擬不等於 iPhone／WebKit 真機驗證，測試中的 share API 是模擬接收端。
 
-## MVP 使用方式
+## 主要程式
 
-1. 新增聯絡人
-2. 用聯絡人建立群組
-3. 在發送區選群組或手動勾選對象
-4. 按 `手機分享` 產生 placeholder 早安圖並叫出系統分享面板
-5. 若裝置不支援檔案分享，系統會退回成下載圖片 + 複製文字
-
-## 架構決策
-
-### 1. 發送通道先抽象化
-
-這個專案先支援兩種概念上的通道：
-
-- `share-sheet`: 立刻可用，依賴 iOS / browser 原生分享能力
-- `official-channel`: 未實作，保留給未來串接 LINE Official Account、Email、SMS 或其他正式 API
-
-這樣做的原因是「幫長輩選群發對象」與「真正送到哪個通訊平台」其實是兩件不同的事。MVP 先把可控的部分做穩。
-
-### 2. 真正自動群發，取決於目標平台
-
-如果未來目標是 LINE，需要特別注意：
-
-- LINE Messaging API 的 push / broadcast / narrowcast 是針對已加入你的 LINE Official Account 的使用者
-- 不適合拿來直接對任意私人聯絡人名單做個人帳號式群發
-
-因此如果需求是：
-
-- `A.` 長輩自己挑私人 LINE 朋友直接自動送出
-  - 這不適合當成第一版正式方案
-  - 目前 MVP 用 iPhone 分享面板當 fallback，最後一步由使用者自己選目標 app / 對象
-- `B.` 一群固定長輩 / 親友願意先加官方帳號
-  - 這才適合做成正式自動化群發系統
-  - 下一階段可加 backend、登入、排程、受眾標籤與發送紀錄
-
-### 3. 為什麼沒有先做 backend
-
-因為這一版主要風險不是 CRUD，而是「可不可以在不裝 App 的前提下，完成操作與送出」。現在已先用 PWA 把本機離線操作打通，再決定要不要投資真正的訊息平台整合。
-
-## 建議的下一步
-
-如果你要把它做成真正可上線的系統，我會建議二選一：
-
-1. `私人帳號分享輔助`
-   - 長輩在手機上用系統分享，最後一步進 LINE / iMessage 選聊天對象
-   - 優點：最貼近你目前要的私人帳號使用方式，不受公務電腦安裝限制
-   - 缺點：最後一步仍要手動選對象，不是全自動
-2. `後續再決定是否做同步 backend`
-   - 若未來覺得 JSON 匯入 / 匯出不夠，再補帳號同步與後端
-   - 優點：先把真實使用流程跑通，再決定是否值得投資後端
-   - 缺點：目前跨裝置同步仍不是即時的
-
-## 已知限制
-
-- 目前資料存在 `localStorage`，還沒有跨裝置同步
-- 目前圖片是動態產生的 placeholder，不是正式圖庫
-- `手機分享` 是否能直接顯示特定 app，仍受 iOS share sheet 與裝置安裝狀態影響
-- 第一次安裝與快取更新仍需要透過網址載入，不能做到從零開始完全不經 server
-- 若未來要做真正自動群發，必須先確認目標平台與法規/權限限制
-
-## 參考資料
-
-- LINE Developers: [Send messages](https://developers.line.biz/en/docs/messaging-api/sending-messages/)
-- LINE Developers: [Messaging API reference](https://developers.line.biz/en/reference/messaging-api/nojs/)
-- WebKit: [New WebKit Features in Safari 12.1](https://webkit.org/blog/8718/new-webkit-features-in-safari-12-1/)
-- WebKit: [New WebKit Features in Safari 15](https://webkit.org/blog/11989/new-webkit-features-in-safari-15/)
-- WebKit: [Web Push for Web Apps on iOS and iPadOS](https://webkit.org/blog/13878/web-push-for-web-apps-on-ios-and-ipados/)
-- WebKit: [Allowing Web Share on Third-Party Sites](https://webkit.org/blog/13708/allowing-web-share-on-third-party-sites/)
+- `app/index.html`、`app/styles.css`：今日早安、名單、設定的介面與響應式版面。
+- `app/app.js`：本機工作流、canvas 排版、私人分享與下載。
+- `app/state.js`：本機資料與備份共用的驗證及預設值。
+- `app/storage.js`、`app/privacy.js`、`app/data-transfer.js`：儲存模式、隱私提示、備份與還原。
+- `app/guide.html`、`app/guide.js`：iPhone 導引與手動確認進度。
+- `app/pwa.js`、`app/sw.js`：離線完整性檢查、同版本快取與確認更新。
+- `app/legacy-upgrade.js`：早期離線版本的相容升級入口。
+- `tests/`：資料與瀏覽器回歸測試。

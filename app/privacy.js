@@ -23,6 +23,10 @@
     if (!window.confirm(message)) {
       return;
     }
+    if (!window.dispatchEvent(new Event("zaoan:before-reload", { cancelable: true }))) {
+      elements.copy.textContent = "目前資料尚未安全儲存，請先備份，暫不切換模式。";
+      return;
+    }
 
     try {
       if (sharedMode) {

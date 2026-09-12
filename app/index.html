@@ -61,7 +61,7 @@
               <a class="text-link" href="#contacts">管理我的名單</a>
               <ul id="recipient-preview" class="sr-only"></ul>
             </details>
-            <details class="advanced-details"><summary>圖片分享標題 <span class="quiet-label">選填</span></summary><label class="field" for="campaign-title"><span>標題不會印在圖片上</span><input id="campaign-title" name="title" maxlength="30"></label></details>
+            <details class="advanced-details"><summary>備忘標題 <span class="quiet-label">選填</span></summary><label class="field" for="campaign-title"><span>只用於匯出的備忘名單，不會印在圖片上</span><input id="campaign-title" name="title" maxlength="30"></label></details>
           </form>
         </div>
         <p class="page-note">不用先建立名單，也能直接分享。圖片在這台裝置製作，不會上傳到伺服器。</p>
@@ -97,9 +97,11 @@
     <footer class="app-footer"><span>一點心意，剛剛好。</span><span>Zaoan Hub · 資料留在你的裝置</span></footer>
   </div>
   <script src="./storage.js" defer></script>
+  <script src="./state.js" defer></script>
   <script src="./app.js" defer></script>
   <script src="./data-transfer.js" defer></script>
   <script src="./privacy.js" defer></script>
   <script src="./pwa.js" defer></script>
+  <script src="./legacy-upgrade.js" defer></script>
 </body>
 </html>
