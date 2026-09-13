@@ -169,6 +169,100 @@ test("long and multiline greetings remain bounded with an honest readability hin
   assert.match(await page.locator("#message-hint").textContent(), /省略/);
 });
 
+async function addContactForReply(page, name = "家族群") {
+  await page.locator('[data-view-link="contacts"]').click();
+  await page.locator("#contact-name").fill(name);
+  await page.locator('#contact-form button[type="submit"]').click();
+  await page.locator('[data-view-link="today"]').click();
+  await page.locator("#received-picker label").filter({ hasText: name }).locator("input").check();
+}
+
+test("daily replies are manual, undoable, persistent and safe with contact display names", async (t) => {
+  const { page } = await setup(t, { viewport: { width: 390, height: 844 } });
+  await page.goto(BASE);
+  await addContactForReply(page);
+  await addContactForReply(page, "<img src=x>");
+  assert.equal(await page.locator("#received-picker img, #reply-checklist img").count(), 0);
+  assert.match(await page.locator("#daily-replies-count").textContent(), /待回覆 2 位/);
+  assert.deepEqual(await page.evaluate(() => window.ZaoanApp.getState().campaign.selectedContactIds), []);
+  await page.locator('#reply-checklist input').first().check();
+  assert.match(await page.locator("#daily-replies-count").textContent(), /待回覆 1 位/);
+  assert.ok(await page.locator('#reply-checklist input').first().evaluate((node) => node === document.activeElement));
+  await page.reload();
+  assert.equal(await page.locator('#reply-checklist input:checked').count(), 1);
+  await page.locator('#reply-checklist input').first().uncheck();
+  assert.match(await page.locator("#pending-replies").textContent(), /家族群/);
+  await page.locator('#received-picker label').filter({ hasText: "家族群" }).locator("input").uncheck();
+  assert.equal(await page.locator('#reply-checklist input').count(), 1);
+  for (const width of [390, 320]) {
+    await page.setViewportSize({ width, height: 844 });
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  }
+  await page.locator("#daily-replies").screenshot({ path: path.join(OUTPUT, "daily-replies-mobile.png") });
+  await page.evaluate(() => document.styleSheets[0].insertRule(":root { font-size: 36px; }", document.styleSheets[0].cssRules.length));
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), "Daily checklist supports enlarged text");
+  await page.locator("#prepare-replies-button").click();
+  assert.equal(await page.locator("#today-title").evaluate((node) => node === document.activeElement), true);
+});
+
+for (const outcome of ["success", "cancel", "fail"]) {
+  test(`sharing ${outcome} never marks daily recipients as replied`, async (t) => {
+    const { context, page } = await setup(t);
+    await nativeShareMock(context, outcome);
+    await page.goto(BASE);
+    await addContactForReply(page);
+    await ready(page);
+    await page.locator("#share-button").click();
+    await ready(page);
+    assert.equal(await page.locator('#reply-checklist input:checked').count(), 0);
+    assert.match(await page.locator("#daily-replies-count").textContent(), /待回覆 1 位/);
+    assert.deepEqual(await page.evaluate(() => window.shareCalls[0].keys), ["files"]);
+  });
+}
+
+test("returning after local midnight clears only daily marks and rejects an old checklist action", async (t) => {
+  const { page } = await setup(t, { timezoneId: "Asia/Taipei" });
+  await page.clock.setFixedTime(new Date("2026-09-12T16:05:00Z"));
+  await page.goto(BASE);
+  await addContactForReply(page);
+  await page.locator('#reply-checklist input').check();
+  await page.locator("#campaign-message").fill("換日保留這句祝福");
+  assert.equal(await page.evaluate(() => window.ZaoanApp.getState().dailyReplies.date), "2026-09-13");
+  await page.clock.setFixedTime(new Date("2026-09-13T16:05:00Z"));
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  assert.equal(await page.locator('#received-picker input:checked').count(), 0);
+  assert.equal(await page.locator('#reply-checklist input').count(), 0);
+  assert.equal(await page.locator("#campaign-message").inputValue(), "換日保留這句祝福");
+  assert.equal(await page.locator("#contact-count").textContent(), "1 位");
+  assert.equal(await page.evaluate(() => window.ZaoanApp.getState().dailyReplies.date), "2026-09-14");
+  await page.clock.setFixedTime(new Date("2026-09-14T16:05:00Z"));
+  await page.evaluate(() => {
+    const input = document.querySelector('#received-picker input');
+    input.checked = true;
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  assert.equal(await page.locator('#received-picker input:checked').count(), 0, "Yesterday's action is not silently applied today");
+  assert.match(await page.locator("#status-box").textContent(), /已換日/);
+});
+
+test("contact deletion and sample replacement leave no dangling daily records", async (t) => {
+  const { page } = await setup(t);
+  await page.goto(BASE);
+  await addContactForReply(page);
+  await page.locator('#reply-checklist input').check();
+  await page.locator('[data-view-link="contacts"]').click();
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.locator('[data-action="remove-contact"]').click();
+  const deleted = await page.evaluate(() => window.ZaoanState.normalize(window.ZaoanApp.getState()).dailyReplies);
+  assert.deepEqual(deleted.receivedContactIds, []);
+  assert.deepEqual(deleted.repliedContactIds, []);
+  await addContactForReply(page);
+  await page.locator('[data-view-link="settings"]').click();
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.locator("#seed-button").click();
+  assert.deepEqual(await page.evaluate(() => window.ZaoanState.normalize(window.ZaoanApp.getState()).dailyReplies.receivedContactIds), []);
+});
+
 test("installation guide progress is optional and never inferred from a contact list", async (t) => {
   const { page } = await setup(t, { viewport: { width: 390, height: 844 } });
   await page.goto(new URL("guide.html", BASE).href);
@@ -237,6 +331,8 @@ test("import rejects unrelated JSON, preserves cancelled imports and round-trips
   backup.campaign.message = "還原的祝福";
   backup.campaign.sender = "";
   backup.contacts.push({ id: "c1", name: "<img src=x>", channel: "line", note: "<script>alert(1)</script>" });
+  backup.dailyReplies.receivedContactIds = ["c1"];
+  backup.dailyReplies.repliedContactIds = ["c1"];
   page.once("dialog", (dialog) => dialog.dismiss());
   await upload(backup);
   assert.equal(await page.evaluate((key) => JSON.parse(localStorage.getItem(key)).campaign.message, STATE_KEY), "原本的祝福");
@@ -249,12 +345,15 @@ test("import rejects unrelated JSON, preserves cancelled imports and round-trips
   await page.locator('[data-view-link="today"]').click();
   assert.equal(await page.locator("#campaign-sender").inputValue(), "");
   assert.equal(await page.locator("#campaign-message").inputValue(), "還原的祝福");
+  assert.deepEqual(await page.evaluate(() => window.ZaoanApp.getState().dailyReplies), backup.dailyReplies);
+  assert.equal(await page.locator("#reply-checklist img, #reply-checklist script").count(), 0);
 });
 
 test("shared-device mode moves the current draft out of permanent storage", async (t) => {
   const { page } = await setup(t);
   await page.goto(BASE);
   await ready(page);
+  await addContactForReply(page);
   await page.locator("#campaign-message").fill("共用電腦上的祝福");
   await page.locator('[data-view-link="settings"]').click();
   page.once("dialog", (dialog) => dialog.accept());
@@ -262,6 +361,7 @@ test("shared-device mode moves the current draft out of permanent storage", asyn
   await ready(page);
   assert.equal(await page.evaluate((key) => localStorage.getItem(key), STATE_KEY), null);
   assert.equal(await page.evaluate((key) => JSON.parse(sessionStorage.getItem(key)).campaign.message, STATE_KEY), "共用電腦上的祝福");
+  assert.equal(await page.evaluate((key) => JSON.parse(sessionStorage.getItem(key)).dailyReplies.receivedContactIds.length, STATE_KEY), 1);
   assert.equal(await page.locator("#draft-status").textContent(), "已儲存於此分頁");
 });
 

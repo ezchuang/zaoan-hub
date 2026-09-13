@@ -57,6 +57,11 @@
     copyButton: document.getElementById("copy-button"),
     shareResult: document.getElementById("share-result"),
     shareHelp: document.getElementById("share-help"),
+    receivedPicker: document.getElementById("received-picker"),
+    replyChecklist: document.getElementById("reply-checklist"),
+    dailyRepliesCount: document.getElementById("daily-replies-count"),
+    pendingReplies: document.getElementById("pending-replies"),
+    prepareRepliesButton: document.getElementById("prepare-replies-button"),
     draftStatus: document.getElementById("draft-status"),
     storageWarning: document.getElementById("storage-warning")
   };
@@ -66,13 +71,11 @@
   window.ZaoanApp = Object.freeze({
     getState() {
       if (loadFailed) throw new Error("原有資料無法讀取，請先修復或還原備份，避免把空白資料當成備份");
+      refreshDailyView();
       return deepClone(state);
     }
   });
   showView(false);
-  document.getElementById("today-date").textContent = new Intl.DateTimeFormat("zh-TW", {
-    month: "long", day: "numeric", weekday: "long"
-  }).format(new Date());
 
   function bindEvents() {
     elements.seedButton.addEventListener("click", handleSeedData);
@@ -84,6 +87,22 @@
     elements.exportButton.addEventListener("click", handleExport);
     elements.downloadButton.addEventListener("click", handleDownload);
     elements.copyButton.addEventListener("click", handleCopy);
+    elements.receivedPicker.addEventListener("change", handleDailyToggle);
+    elements.replyChecklist.addEventListener("change", handleDailyToggle);
+    document.getElementById("show-replies-button").addEventListener("click", () => {
+      refreshDailyView();
+      document.getElementById("daily-replies-title").focus();
+    });
+    elements.prepareRepliesButton.addEventListener("click", () => {
+      if (refreshDailyView(true)) return;
+      document.getElementById("today-title").focus();
+      elements.previewCanvas.scrollIntoView({ block: "start" });
+    });
+    const refreshWhenVisible = () => { if (!document.hidden) refreshDailyView(true); };
+    window.addEventListener("focus", refreshWhenVisible);
+    window.addEventListener("pageshow", refreshWhenVisible);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    window.setInterval(refreshWhenVisible, 60000);
     document.getElementById("edit-message-button").addEventListener("click", () => {
       document.getElementById("campaign-message").focus();
       document.getElementById("campaign-message").scrollIntoView({ block: "center" });
@@ -116,6 +135,7 @@
   }
 
   function showView(focus) {
+    refreshDailyView(focus);
     const name = window.location.hash.slice(1);
     const view = ["today", "contacts", "settings"].includes(name) ? name : "today";
     document.querySelectorAll("[data-view]").forEach((section) => {
@@ -177,12 +197,68 @@
   }
 
   function render() {
+    window.ZaoanState.refreshDailyReplies(state);
     renderContacts();
     renderGroups();
     renderGroupPickers();
     fillCampaignFields();
+    renderDailyReplies();
     updatePreview();
     return persistState();
+  }
+
+  function refreshDailyView(announce = false) {
+    if (!window.ZaoanState.refreshDailyReplies(state)) return false;
+    renderDailyReplies();
+    persistState();
+    if (announce) elements.statusBox.textContent = "已換日，今天的回覆勾記重新開始。親友名單與祝福草稿都還在。";
+    return true;
+  }
+
+  function renderDailyReplies() {
+    const daily = state.dailyReplies;
+    const dateLabel = new Intl.DateTimeFormat("zh-TW", {
+      month: "long", day: "numeric", weekday: "long"
+    }).format(new Date());
+    document.getElementById("today-date").textContent = dateLabel;
+    document.getElementById("daily-replies-date").textContent = `${dateLabel} · 手動記錄`;
+    const pending = daily.receivedContactIds.filter((id) => !daily.repliedContactIds.includes(id));
+    elements.dailyRepliesCount.textContent = daily.receivedContactIds.length
+      ? `待回覆 ${pending.length} 位 · 已勾記 ${daily.repliedContactIds.length} 位` : "尚未勾記";
+    elements.receivedPicker.innerHTML = state.contacts.map((contact) => `
+      <label class="picker-chip"><input type="checkbox" data-role="daily-received" value="${escapeHtml(contact.id)}" ${daily.receivedContactIds.includes(contact.id) ? "checked" : ""}><span>${escapeHtml(contact.name)}</span></label>
+    `).join("") || '<p class="empty-state">還沒有備忘名單。先新增親友或聊天室暱稱；不建立名單也能直接分享圖片。</p>';
+    elements.replyChecklist.innerHTML = daily.receivedContactIds.map((id) => {
+      const replied = daily.repliedContactIds.includes(id);
+      return `<label class="reply-row"><input type="checkbox" data-role="daily-replied" value="${escapeHtml(id)}" ${replied ? "checked" : ""}><span><strong>${escapeHtml(findContact(id).name)}</strong><small>${replied ? "已手動標記回覆，可取消勾記" : "我已在 LINE 回覆，再勾這裡"}</small></span></label>`;
+    }).join("");
+    document.getElementById("daily-replies-empty").hidden = daily.receivedContactIds.length > 0;
+    elements.pendingReplies.textContent = pending.length
+      ? `待回覆：${pending.map((id) => findContact(id).name).join("、")}`
+      : daily.receivedContactIds.length ? "今天勾記的對象都已手動標記回覆；是否送達仍以 LINE 為準。" : "";
+    elements.prepareRepliesButton.disabled = pending.length === 0;
+    document.getElementById("show-replies-button").textContent = pending.length
+      ? `查看回覆備忘 · 還有 ${pending.length} 位` : "查看今天的回覆備忘";
+  }
+
+  function handleDailyToggle(event) {
+    const checkbox = event.target;
+    if (!checkbox.matches('input[data-role="daily-received"], input[data-role="daily-replied"]')) return;
+    // A click on yesterday's checklist must not silently become today's record.
+    if (refreshDailyView(true)) return;
+    const id = checkbox.value;
+    if (!findContact(id)) return;
+    const daily = state.dailyReplies;
+    const received = checkbox.dataset.role === "daily-received";
+    const key = received ? "receivedContactIds" : "repliedContactIds";
+    if (!received && !daily.receivedContactIds.includes(id)) return;
+    daily[key] = daily[key].filter((value) => value !== id);
+    if (checkbox.checked) daily[key].push(id);
+    if (received && !checkbox.checked) daily.repliedContactIds = daily.repliedContactIds.filter((value) => value !== id);
+    const role = checkbox.dataset.role;
+    renderDailyReplies();
+    persistState();
+    document.querySelector(`input[data-role="${role}"][value="${id}"]`)?.focus({ preventScroll: true });
   }
 
   function renderContacts() {
@@ -292,15 +368,15 @@
   }
 
   function handleSeedData() {
-    if (!window.confirm("示範名單會取代目前的名單與草稿。請先備份，確定要載入嗎？")) return;
+    if (!window.confirm("示範名單會取代目前的名單、草稿與回覆勾記。請先備份，確定要載入嗎？")) return;
     if (!allowExplicitReplacement()) return;
-    Object.assign(state, deepClone(sampleState));
+    Object.assign(state, window.ZaoanState.normalize(deepClone(sampleState)));
     const saved = render();
     setStatus(saved ? "已載入示範名單，方便你直接試流程。" : "示範名單已載入此頁，但尚未儲存。請查看上方提示。");
   }
 
   function handleResetData() {
-    if (!window.confirm("確定要清空名單與草稿嗎？此操作無法復原，建議先下載備份。")) {
+    if (!window.confirm("確定要清空名單、草稿與回覆勾記嗎？此操作無法復原，建議先下載備份。")) {
       return;
     }
 
@@ -396,6 +472,8 @@
       .filter((group) => group.contactIds.length > 0);
 
     state.campaign.selectedContactIds = state.campaign.selectedContactIds.filter((id) => id !== contactId);
+    state.dailyReplies.receivedContactIds = state.dailyReplies.receivedContactIds.filter((id) => id !== contactId);
+    state.dailyReplies.repliedContactIds = state.dailyReplies.repliedContactIds.filter((id) => id !== contactId);
     if (state.campaign.selectedGroupId && !findGroup(state.campaign.selectedGroupId)) {
       state.campaign.selectedGroupId = "";
     }

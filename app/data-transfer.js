@@ -55,7 +55,7 @@
       validatePayloadMetadata(payload);
       const nextState = normalizeState(payload?.state || payload);
 
-      if (!window.confirm(`將還原 ${nextState.contacts.length} 位親友、${nextState.groups.length} 組名單與祝福草稿，並取代目前資料。請先下載目前資料的備份。確定還原嗎？`)) {
+      if (!window.confirm(`將還原 ${nextState.contacts.length} 位親友、${nextState.groups.length} 組名單、祝福草稿與回覆勾記，並取代目前資料。非當日勾記會重新開始。請先下載目前資料的備份。確定還原嗎？`)) {
         elements.importFile.value = "";
         return;
       }

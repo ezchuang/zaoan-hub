@@ -105,6 +105,14 @@ fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
 legend { font-weight: 700; margin-bottom: 8px; }
 .empty-state { padding: 18px; background: var(--paper); border-radius: 10px; font-size: .89rem; color: var(--muted); }
 .list-stack { display: grid; gap: 12px; }
+.daily-replies { margin-top: 24px; }
+.daily-replies .management-grid { gap: 24px; }
+.reply-row { display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; cursor: pointer; overflow-wrap: anywhere; }
+.reply-row span { min-width: 0; }
+.reply-row small { display: block; }
+.reply-row:has(input:checked) { background: var(--soft); }
+#pending-replies { margin: 16px 0; overflow-wrap: anywhere; }
+#prepare-replies-button:disabled { cursor: default; }
 .list-card { border-top: 1px solid var(--line); padding-top: 16px; overflow-wrap: anywhere; }
 .card-head { display: flex; gap: 12px; align-items: center; justify-content: space-between; }
 .card-title { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-width: 0; }

@@ -44,6 +44,7 @@
               <p id="share-help" class="helper">下一步：選 LINE → 選親友 → 在 LINE 送出。</p>
               <div class="secondary-actions"><button id="download-button" class="button button-secondary" type="button" disabled>下載圖片</button><button id="copy-button" class="button button-secondary" type="button">複製祝福文字</button></div>
               <p id="share-result" class="helper" role="status" aria-live="polite"></p>
+              <button id="show-replies-button" class="button button-ghost" type="button">查看今天的回覆備忘</button>
             </div>
           </section>
           <form id="campaign-form" class="composer panel">
@@ -64,15 +65,23 @@
             <details class="advanced-details"><summary>備忘標題 <span class="quiet-label">選填</span></summary><label class="field" for="campaign-title"><span>只用於匯出的備忘名單，不會印在圖片上</span><input id="campaign-title" name="title" maxlength="30"></label></details>
           </form>
         </div>
+        <section id="daily-replies" class="panel daily-replies" aria-labelledby="daily-replies-title">
+          <div class="section-heading"><div><p class="eyebrow" id="daily-replies-date"></p><h2 id="daily-replies-title" tabindex="-1">今天的回覆備忘</h2></div><span id="daily-replies-count" class="tag" role="status" aria-live="polite">尚未勾記</span></div>
+          <p class="helper">手動記下誰傳來問候；本程式不會讀取 LINE，也不會替你選聊天室。每日勾記依裝置日期重新開始，親友名單與草稿會保留。</p>
+          <div class="management-grid">
+            <fieldset><legend>1. 今天收到誰的問候？</legend><div id="received-picker" class="picker-grid"></div><a class="text-link" href="#contacts">新增親友或聊天室備忘</a></fieldset>
+            <div><h3>2. 在 LINE 回覆後，勾記完成</h3><p id="daily-replies-empty" class="empty-state">先在左側或上方勾記收到問候的對象。</p><div id="reply-checklist" class="list-stack"></div><p id="pending-replies" class="helper"></p><button id="prepare-replies-button" class="button button-secondary" type="button" disabled>回去準備圖片</button><p class="helper">最後仍要在 LINE 選人送出。取消分享或只開啟面板，都不會自動標記已回覆。</p></div>
+          </div>
+        </section>
         <p class="page-note">不用先建立名單，也能直接分享。圖片在這台裝置製作，不會上傳到伺服器。</p>
       </section>
       <section id="contacts" data-view aria-labelledby="contacts-title" hidden>
         <div class="page-heading"><div><p class="eyebrow">只給自己看的問候備忘</p><h1 id="contacts-title" tabindex="-1">把想念的人，記下來。</h1></div><a class="button button-secondary" href="#today">回去準備早安圖</a></div>
-        <p class="intro">不需要 LINE 帳號、電話或密碼。這裡的名單只用來提醒自己，不會同步到 LINE。</p>
+        <p class="intro">用 LINE 裡的顯示名稱記下朋友或群組，不需要帳號、電話、密碼或聊天室 ID。這裡的名單只用來提醒自己，不會同步到 LINE。</p>
         <div class="management-grid">
           <section class="panel"><div class="section-heading"><h2>親友</h2><span id="contact-count" class="tag">0 位</span></div>
             <form id="contact-form" class="stack-form">
-              <label class="field" for="contact-name"><span>姓名或暱稱</span><input id="contact-name" name="name" maxlength="20" required placeholder="例如：王阿姨" autocomplete="off"></label>
+              <label class="field" for="contact-name"><span>親友或聊天室暱稱</span><input id="contact-name" name="name" maxlength="20" required placeholder="例如：王阿姨、家族群" autocomplete="off"></label>
               <div class="form-row"><label class="field" for="contact-channel"><span>常用軟體</span><select id="contact-channel" name="channel"><option value="line">LINE</option><option value="imessage">iMessage</option><option value="email">Email</option><option value="unknown">未確認</option></select></label><label class="field" for="contact-note"><span>備註 <small>選填</small></span><input id="contact-note" name="note" maxlength="40" placeholder="例如：喜歡花草" autocomplete="off"></label></div>
               <button class="button button-primary" type="submit">新增親友</button>
             </form>
@@ -87,10 +96,10 @@
       <section id="settings" data-view aria-labelledby="settings-title" hidden>
         <div class="page-heading"><div><p class="eyebrow">安心使用，記得備份</p><h1 id="settings-title" tabindex="-1">照顧好你的資料。</h1></div></div>
         <div class="settings-grid">
-          <section class="panel"><h2>換手機或備份</h2><p>名單與草稿只留在這台裝置，不會自動同步。清除瀏覽器資料前，請先下載備份。</p><div class="button-row"><button id="export-state-button" class="button button-primary" type="button">下載全部資料備份</button><button id="import-state-button" class="button button-secondary" type="button">從備份還原</button></div><input id="import-state-file" type="file" accept="application/json,.json" hidden><p class="helper">備份檔含親友姓名與備註，請妥善保管。還原會取代目前資料。</p></section>
+          <section class="panel"><h2>換手機或備份</h2><p>名單、草稿與回覆勾記只留在這台裝置，不會自動同步。清除瀏覽器資料前，請先下載備份。</p><div class="button-row"><button id="export-state-button" class="button button-primary" type="button">下載全部資料備份</button><button id="import-state-button" class="button button-secondary" type="button">從備份還原</button></div><input id="import-state-file" type="file" accept="application/json,.json" hidden><p class="helper">備份檔含親友姓名、備註與當日回覆勾記，請妥善保管。還原會取代目前資料。</p></section>
           <section class="panel"><div class="section-heading"><h2>在公務電腦上使用</h2><span id="privacy-mode-badge" class="tag">檢查儲存方式中</span></div><p id="privacy-mode-copy"></p><button id="privacy-mode-button" class="button button-secondary" type="button">啟用共用裝置模式</button><p class="helper">不是加密或密碼鎖。共用電腦離開前請備份、清空資料，並關閉相關分頁。</p></section>
           <section class="panel"><h2>安裝與離線使用</h2><div class="badge-row"><span id="app-mode-badge" class="tag">瀏覽器模式</span><span id="offline-badge" class="tag">正在準備離線使用…</span><span id="network-badge" class="tag"></span></div><p id="install-copy">首次開啟需要網路。離線準備完成後，可以離線寫祝福、製作圖片；LINE 送出仍需要網路。</p><a class="button button-secondary" href="./guide.html">查看 iPhone 安裝步驟</a></section>
-          <section class="panel"><h2>其他操作</h2><p>匯出今天勾選的備忘名單，或載入示範資料試用。</p><div class="button-row"><button id="export-button" class="button button-secondary" type="button">匯出這次的備忘名單</button><button id="seed-button" class="button button-ghost" type="button">載入示範名單</button></div><div class="danger-zone"><h3>清空這裡的資料</h3><p class="helper">清除本程式在這個分頁使用的名單與草稿，不影響 LINE。此操作無法復原，請先備份。</p><button id="reset-button" class="button button-danger" type="button">清空名單與草稿</button></div></section>
+          <section class="panel"><h2>其他操作</h2><p>匯出「今天想問候誰」勾選的備忘名單，或載入示範資料試用。當日回覆勾記請用上方的全部資料備份保存。</p><div class="button-row"><button id="export-button" class="button button-secondary" type="button">匯出這次的備忘名單</button><button id="seed-button" class="button button-ghost" type="button">載入示範名單</button></div><div class="danger-zone"><h3>清空這裡的資料</h3><p class="helper">清除本程式在這個分頁使用的名單、草稿與回覆勾記，不影響 LINE。此操作無法復原，請先備份。</p><button id="reset-button" class="button button-danger" type="button">清空名單與草稿</button></div></section>
         </div>
       </section>
     </main>

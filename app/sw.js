@@ -1,5 +1,5 @@
 const CACHE_PREFIX = `zaoan-hub-shell:${new URL(self.registration.scope).pathname}:`;
-const CACHE_VERSION = "v7";
+const CACHE_VERSION = "v8";
 const CACHE_NAME = `${CACHE_PREFIX}${CACHE_VERSION}`;
 const APP_SHELL_PATHS = [
   "./", "./index.html", "./guide.html", "./styles.css", "./storage.js", "./state.js",

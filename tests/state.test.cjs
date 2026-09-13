@@ -68,3 +68,52 @@ test("backup limits match the UI and reject oversized text or lists", () => {
   input.contacts = Array.from({ length: 501 }, (_, i) => ({ id: `c${i}`, name: "親友", channel: "line" }));
   assert.throws(() => state.normalize(input));
 });
+
+test("legacy backups acquire an empty daily checklist without inventing received greetings", () => {
+  const input = state.createEmpty();
+  delete input.dailyReplies;
+  assert.deepEqual(plain(state.normalize(input).dailyReplies), { date: "", receivedContactIds: [], repliedContactIds: [] });
+});
+
+test("daily received and replied records survive validation and deduplicate IDs", () => {
+  const input = state.createEmpty();
+  input.contacts.push({ id: "c1", name: "家族群", channel: "line" });
+  input.dailyReplies = { date: "2026-09-13", receivedContactIds: ["c1", "c1"], repliedContactIds: ["c1"] };
+  const normalized = state.normalize(input);
+  assert.deepEqual(plain(normalized.dailyReplies), { date: "2026-09-13", receivedContactIds: ["c1"], repliedContactIds: ["c1"] });
+  assert.deepEqual(plain(state.normalize(normalized)), plain(normalized));
+});
+
+test("daily checklist rejects invalid dates, IDs, oversized lists and replies without a greeting", () => {
+  for (const daily of [
+    null, [], {},
+    { date: "2026-02-30", receivedContactIds: [], repliedContactIds: [] },
+    { date: "2026-9-13", receivedContactIds: [], repliedContactIds: [] },
+    { date: "", receivedContactIds: ["c1"], repliedContactIds: [] },
+    { date: "2026-09-13", receivedContactIds: ["missing"], repliedContactIds: [] },
+    { date: "2026-09-13", receivedContactIds: ['x" onclick="alert(1)'], repliedContactIds: [] },
+    { date: "2026-09-13", receivedContactIds: "c1", repliedContactIds: [] },
+    { date: "2026-09-13", receivedContactIds: Array(501).fill("c1"), repliedContactIds: [] },
+    { date: "2026-09-13", receivedContactIds: [], repliedContactIds: ["c1"] },
+    { date: "2026-09-13", receivedContactIds: ["c1"], repliedContactIds: {} }
+  ]) {
+    const input = state.createEmpty();
+    input.contacts.push({ id: "c1", name: "親友", channel: "line" });
+    input.dailyReplies = daily;
+    assert.throws(() => state.normalize(input));
+  }
+});
+
+test("daily rollover uses local calendar fields and never changes contacts or campaign selections", () => {
+  const input = state.createEmpty();
+  input.contacts.push({ id: "c1", name: "親友", channel: "line" });
+  input.campaign.selectedContactIds = ["c1"];
+  input.dailyReplies = { date: "2026-09-13", receivedContactIds: ["c1"], repliedContactIds: ["c1"] };
+  const before = plain(input);
+  assert.equal(state.refreshDailyReplies(input, new Date(2026, 8, 13, 23, 59)), false);
+  assert.deepEqual(plain(input), before);
+  assert.equal(state.refreshDailyReplies(input, new Date(2026, 8, 14, 0, 1)), true);
+  assert.deepEqual(plain(input.dailyReplies), { date: "2026-09-14", receivedContactIds: [], repliedContactIds: [] });
+  assert.deepEqual(plain(input.contacts), before.contacts);
+  assert.deepEqual(plain(input.campaign), before.campaign);
+});

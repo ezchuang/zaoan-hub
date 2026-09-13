@@ -95,6 +95,7 @@
     return {
       contacts: normalizedContacts,
       groups: normalizedGroups,
+      dailyReplies: normalizeDailyReplies(state.dailyReplies, contactIds),
       campaign: {
         title: normalizeText(campaign.title ?? "今天的早安圖", 30, "發送標題"),
         sender: normalizeText(campaign.sender ?? "", 20, "署名"),
@@ -118,6 +119,46 @@
     if (payload.schemaVersion !== undefined && payload.schemaVersion !== 1) {
       throw new Error("不支援這個備份版本");
     }
+  }
+
+  function emptyDailyReplies(date = "") {
+    return { date, receivedContactIds: [], repliedContactIds: [] };
+  }
+
+  function normalizeDailyReplies(value, contactIds) {
+    if (value === undefined) return emptyDailyReplies();
+    if (!isRecord(value) || typeof value.date !== "string") {
+      throw new Error("每日回覆備忘格式不正確");
+    }
+    if (value.date !== "") {
+      const parsed = new Date(`${value.date}T00:00:00Z`);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(value.date) || !Number.isFinite(parsed.getTime())
+        || parsed.toISOString().slice(0, 10) !== value.date) {
+        throw new Error("每日回覆備忘日期不正確");
+      }
+    }
+    const lists = [value.receivedContactIds, value.repliedContactIds].map((ids) => {
+      if (!Array.isArray(ids) || ids.length > MAX_CONTACTS) throw new Error("每日回覆名單格式不正確");
+      const normalized = [...new Set(ids.map((id) => normalizeId(id, "回覆備忘 ID")))];
+      if (normalized.some((id) => !contactIds.has(id))) throw new Error("每日回覆名單包含不存在的親友");
+      return normalized;
+    });
+    const [receivedContactIds, repliedContactIds] = lists;
+    if ((!value.date && receivedContactIds.length) || repliedContactIds.some((id) => !receivedContactIds.includes(id))) {
+      throw new Error("已回覆的對象必須在當日收到問候的名單中");
+    }
+    return { date: value.date, receivedContactIds, repliedContactIds };
+  }
+
+  function localDateKey(date = new Date()) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  }
+
+  function refreshDailyReplies(state, date = new Date()) {
+    const key = localDateKey(date);
+    if (state.dailyReplies?.date === key) return false;
+    state.dailyReplies = emptyDailyReplies(key);
+    return true;
   }
 
   function normalizeId(value, fieldName) {
@@ -148,6 +189,7 @@
     return {
       contacts: [],
       groups: [],
+      dailyReplies: emptyDailyReplies(),
       campaign: {
         title: "今天的早安圖",
         sender: "",
@@ -162,6 +204,7 @@
   window.ZaoanState = Object.freeze({
     normalize: normalizeState,
     validatePayloadMetadata,
+    refreshDailyReplies,
     createEmpty: createEmptyState
   });
 })();
