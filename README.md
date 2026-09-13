@@ -17,6 +17,10 @@
 
 ## 啟動
 
+**一般使用者不需要執行 server。** 這套程式可以直接放到 GitHub Pages，由 GitHub 提供靜態網頁與 HTTPS。部署者請依 [GitHub Pages 部署步驟](docs/github-pages.md) 操作；目前 workflow 採手動發布，不會因 push 自動上線。
+
+以下 Python 指令只用於開發者的本機預覽。
+
 Python 3 即可，不需要安裝 Web framework、打包工具或桌面 App：
 
 ```powershell
@@ -74,12 +78,18 @@ Safari 與主畫面版本不應假設一定共用同一份資料；若資料不�
 
 `server.py` 提供 CSP、nosniff、frame protection、Referrer Policy 與 Permissions Policy headers。正式 static hosting 應配置同等 HTTP headers，不能只依賴 HTML 的 CSP meta tag。
 
+GitHub Pages 不會執行這個 Python server，因此不會套用上述自訂 HTTP headers；其部署範圍、公開性與同 origin 資料風險請見 [Pages 安全注意事項](docs/github-pages.md#發布範圍與安全)。
+
+## LINE 能力與後續方向
+
+現版不取得聊天室 session 或 LINE ID。若想改用官方 LIFF 多選分享，或辨識「誰傳過早安圖」來安排回覆，請先看 [私人 LINE 能力邊界](docs/line-capabilities.md)，避免把私人分享、收件匣監聽與官方帳號 bot 混為一談。這些 LINE 整合尚未實作。
+
 ## 開發與驗證
 
 前端不增加 runtime dependencies。資料驗證測試只需要 Node.js：
 
 ```powershell
-node --test tests/state.test.cjs
+node --test tests/state.test.cjs tests/pages.test.cjs
 ```
 
 瀏覽器回歸測試需要可解析的既有 `playwright` 套件與瀏覽器。Windows 預設使用已安裝的 Microsoft Edge；其他系統預設使用 Playwright Chromium。可用 `BROWSER_CHANNEL` 指定其他已安裝的 channel，或用 `NODE_PATH` 指向既有的 node_modules。
