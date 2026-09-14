@@ -34,6 +34,12 @@ async function ready(page) {
   await page.waitForFunction(() => !document.getElementById("share-button").disabled);
 }
 
+async function editMessage(page, text) {
+  if (!(await page.locator("#today").isVisible())) await page.locator('[data-view-link="today"]').click();
+  if (!(await page.locator("#greeting-editor").evaluate((node) => node.open))) await page.locator("#edit-message-button").click();
+  await page.locator("#campaign-message").fill(text);
+}
+
 async function nativeShareMock(context, outcome = "success") {
   await context.addInitScript((result) => {
     window.shareCalls = [];
@@ -57,6 +63,11 @@ test("first visit shows a usable greeting without fake contacts; responsive layo
   await ready(page);
   assert.equal(await page.locator("#contact-count").textContent(), "0 位");
   assert.equal(await page.locator("#campaign-sender").inputValue(), "");
+  assert.equal(await page.locator("#greeting-editor").evaluate((node) => node.open), false);
+  assert.equal(await page.locator("#daily-replies").isVisible(), false);
+  assert.equal(await page.locator('#today [data-role="campaign-contact"]').count(), 0);
+  assert.equal(await page.evaluate(() => window.ZaoanApp.getState().greeting.mode), "daily");
+  assert.notEqual(await page.locator("#preview-canvas").getAttribute("data-background"), "fallback");
   for (const width of [1280, 768, 390, 320]) {
     await page.setViewportSize({ width, height: 900 });
     for (const view of ["today", "contacts", "settings"]) {
@@ -83,7 +94,7 @@ test("private sharing preserves user activation and sends only an image", async 
   const { context, page } = await setup(t);
   await nativeShareMock(context);
   await page.goto(BASE);
-  await page.locator("#campaign-message").fill("早安\n今天也要開開心心！");
+  await editMessage(page, "早安\n今天也要開開心心！");
   await page.locator("#campaign-sender").fill("美惠");
   await ready(page);
   await page.locator("#share-button").click();
@@ -98,6 +109,138 @@ test("private sharing preserves user activation and sends only an image", async 
   await ready(page);
   assert.equal(await page.locator("#campaign-sender").inputValue(), "美惠");
   assert.equal(await page.locator("#campaign-message").inputValue(), "早安\n今天也要開開心心！");
+});
+
+test("daily recommendations rotate, survive reload and preserve custom text and signatures", async (t) => {
+  const { page } = await setup(t, { timezoneId: "Asia/Taipei", viewport: { width: 390, height: 844 } });
+  await page.clock.setFixedTime(new Date("2026-09-13T16:05:00Z"));
+  await page.goto(BASE);
+  await ready(page);
+  await page.locator("#edit-message-button").click();
+  await page.locator("#campaign-sender").fill("美惠");
+  await page.locator("#greeting-editor summary").click();
+  const first = await page.evaluate(() => window.ZaoanApp.getState().greeting.backgroundId);
+  await page.locator("#next-greeting-button").click();
+  await ready(page);
+  const second = await page.evaluate(() => window.ZaoanApp.getState().greeting);
+  assert.notEqual(second.backgroundId, first);
+  await page.reload();
+  await ready(page);
+  assert.deepEqual(await page.evaluate(() => window.ZaoanApp.getState().greeting), second);
+  await page.clock.setFixedTime(new Date("2026-09-14T16:05:00Z"));
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await ready(page);
+  const tomorrow = await page.evaluate(() => window.ZaoanApp.getState());
+  assert.equal(tomorrow.greeting.date, "2026-09-15");
+  assert.equal(tomorrow.greeting.variant, 0);
+  assert.equal(tomorrow.campaign.sender, "美惠");
+  await editMessage(page, "");
+  await page.locator("#next-greeting-button").click();
+  await ready(page);
+  assert.equal(await page.locator("#campaign-message").inputValue(), "");
+  await page.clock.setFixedTime(new Date("2026-09-15T16:05:00Z"));
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  assert.equal(await page.locator("#campaign-message").inputValue(), "");
+  page.once("dialog", (dialog) => dialog.dismiss());
+  await page.locator("#use-daily-button").click();
+  assert.equal(await page.evaluate(() => window.ZaoanApp.getState().greeting.mode), "custom");
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.locator("#use-daily-button").click();
+  await ready(page);
+  assert.equal(await page.evaluate(() => window.ZaoanApp.getState().greeting.mode), "daily");
+  assert.equal(await page.locator("#campaign-sender").inputValue(), "美惠");
+  await page.locator("#greeting-editor summary").click();
+  for (let index = 0; index < 3; index++) {
+    const id = await page.locator("#preview-canvas").getAttribute("data-background");
+    await page.locator("#preview-canvas").screenshot({ path: path.join(OUTPUT, `greeting-${id}.png`) });
+    await page.locator("#next-greeting-button").click();
+    await ready(page);
+  }
+});
+
+test("a late background cannot replace the latest preview or downloaded PNG", async (t) => {
+  const { context, page } = await setup(t);
+  await context.addInitScript(() => {
+    const OriginalImage = window.Image;
+    window.finishedBackgrounds = [];
+    window.Image = function (...args) {
+      const image = new OriginalImage(...args);
+      image.addEventListener("load", () => window.finishedBackgrounds.push(image.src));
+      return image;
+    };
+  });
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  t.after(() => release());
+  let firstUrl;
+  let firstRequested;
+  const requested = new Promise((resolve) => { firstRequested = resolve; });
+  await context.route("**/morning-*.png", async (route) => {
+    if (!firstUrl) {
+      firstUrl = route.request().url();
+      firstRequested();
+      await gate;
+    }
+    await route.continue().catch(() => {});
+  });
+  await page.goto(BASE, { waitUntil: "domcontentloaded" });
+  await requested;
+  assert.equal(await page.locator("#share-button").isDisabled(), true);
+  await page.locator("#next-greeting-button").click();
+  await ready(page);
+  const selected = await page.evaluate(() => window.ZaoanApp.getState().greeting.backgroundId);
+  assert.equal(await page.locator("#preview-canvas").getAttribute("data-background"), selected);
+  const before = await page.locator("#preview-canvas").evaluate((canvas) => canvas.toDataURL());
+  release();
+  await page.waitForFunction((url) => window.finishedBackgrounds.includes(url), firstUrl);
+  assert.equal(await page.locator("#preview-canvas").evaluate((canvas) => canvas.toDataURL()), before);
+  await page.locator(".extra-sharing summary").click();
+  const download = page.waitForEvent("download");
+  await page.locator("#download-button").click();
+  assert.deepEqual(await fs.readFile(await (await download).path()), Buffer.from(before.split(",")[1], "base64"));
+});
+
+test("missing backgrounds fall back honestly while PNG sharing stays available", async (t) => {
+  const { context, page } = await setup(t);
+  await nativeShareMock(context);
+  await context.route("**/morning-*.png", (route) => route.abort());
+  await page.goto(BASE);
+  await ready(page);
+  assert.equal(await page.locator("#preview-canvas").getAttribute("data-background"), "fallback");
+  assert.match(await page.locator("#artwork-status").textContent(), /簡易底圖/);
+  await page.locator("#share-button").click();
+  assert.equal(await page.evaluate(() => window.shareCalls[0].files[0].type), "image/png");
+});
+
+test("a stalled background times out and can be retried after the connection recovers", async (t) => {
+  const { context, page } = await setup(t);
+  await nativeShareMock(context);
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  t.after(() => release());
+  let firstUrl;
+  await context.route("**/morning-*.png", async (route) => {
+    if (!firstUrl) {
+      firstUrl = route.request().url();
+      await gate;
+    }
+    await route.continue().catch(() => {});
+  });
+  await page.goto(BASE, { waitUntil: "domcontentloaded" });
+  const initial = await page.evaluate(() => window.ZaoanApp.getState().greeting.backgroundId);
+  await ready(page);
+  assert.equal(await page.locator("#preview-canvas").getAttribute("data-background"), "fallback");
+  assert.equal(await page.locator("#artwork-status").isVisible(), true);
+  await page.locator("#share-button").click();
+  assert.equal(await page.evaluate(() => window.shareCalls[0].files[0].type), "image/png");
+  release();
+  for (let index = 0; index < 3; index++) {
+    await page.locator("#next-greeting-button").click();
+    await ready(page);
+    assert.notEqual(await page.locator("#preview-canvas").getAttribute("data-background"), "fallback");
+  }
+  assert.equal(await page.locator("#preview-canvas").getAttribute("data-background"), initial);
+  assert.equal(await page.locator("#artwork-status").isVisible(), false);
 });
 
 for (const outcome of ["cancel", "fail"]) {
@@ -126,6 +269,7 @@ test("unsupported image sharing downloads PNG; denied clipboard is not reported 
   assert.equal(download.suggestedFilename(), "zaoan-greeting.png");
   const data = await fs.readFile(await download.path());
   assert.equal(data.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
+  await page.locator(".extra-sharing summary").click();
   await page.locator("#copy-button").click();
   assert.match(await page.locator("#share-result").textContent(), /無法自動複製/);
   assert.equal(await page.locator("#campaign-message").evaluate((node) => node.selectionEnd - node.selectionStart), (await page.locator("#campaign-message").inputValue()).length);
@@ -143,7 +287,6 @@ test("contacts and optional groups can be selected, cleared and safely deleted",
   await page.locator('#contact-form button[type="submit"]').click();
   assert.equal(await page.locator('#group-members-picker input:checked').count(), 1, "Unsubmitted group members survive adding a contact");
   await page.locator('#group-form button[type="submit"]').click();
-  await page.locator('[data-view-link="today"]').click();
   await page.locator(".recipient-details summary").click();
   await page.locator("#campaign-group").selectOption({ label: "家人" });
   assert.equal(await page.locator('#campaign-recipients-picker input:checked').count(), 1);
@@ -161,10 +304,10 @@ test("contacts and optional groups can be selected, cleared and safely deleted",
 test("long and multiline greetings remain bounded with an honest readability hint", async (t) => {
   const { page } = await setup(t);
   await page.goto(BASE);
-  await page.locator("#campaign-message").fill("祝福".repeat(250));
+  await editMessage(page, "祝福".repeat(250));
   await ready(page);
   assert.match(await page.locator("#message-hint").textContent(), /縮小|省略/);
-  await page.locator("#campaign-message").fill("早安\n".repeat(100));
+  await editMessage(page, "早安\n".repeat(100));
   await ready(page);
   assert.match(await page.locator("#message-hint").textContent(), /省略/);
 });
@@ -173,7 +316,6 @@ async function addContactForReply(page, name = "家族群") {
   await page.locator('[data-view-link="contacts"]').click();
   await page.locator("#contact-name").fill(name);
   await page.locator('#contact-form button[type="submit"]').click();
-  await page.locator('[data-view-link="today"]').click();
   await page.locator("#received-picker label").filter({ hasText: name }).locator("input").check();
 }
 
@@ -211,6 +353,7 @@ for (const outcome of ["success", "cancel", "fail"]) {
     await nativeShareMock(context, outcome);
     await page.goto(BASE);
     await addContactForReply(page);
+    await page.locator('[data-view-link="today"]').click();
     await ready(page);
     await page.locator("#share-button").click();
     await ready(page);
@@ -226,7 +369,8 @@ test("returning after local midnight clears only daily marks and rejects an old 
   await page.goto(BASE);
   await addContactForReply(page);
   await page.locator('#reply-checklist input').check();
-  await page.locator("#campaign-message").fill("換日保留這句祝福");
+  await editMessage(page, "換日保留這句祝福");
+  await page.locator('[data-view-link="contacts"]').click();
   assert.equal(await page.evaluate(() => window.ZaoanApp.getState().dailyReplies.date), "2026-09-13");
   await page.clock.setFixedTime(new Date("2026-09-13T16:05:00Z"));
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
@@ -285,7 +429,7 @@ test("corrupt persisted state is not overwritten and the greeting remains usable
   await page.goto(BASE);
   await ready(page);
   assert.equal(await page.locator("#storage-warning").isVisible(), true);
-  await page.locator("#campaign-message").fill("不覆蓋舊資料");
+  await editMessage(page, "不覆蓋舊資料");
   assert.equal(await page.evaluate((key) => localStorage.getItem(key), STATE_KEY), '{"contacts":[null],"groups":[],"campaign":{}}');
 });
 
@@ -308,7 +452,7 @@ test("a full storage device can still export the latest in-memory draft", async 
   await page.goto(BASE);
   await ready(page);
   await page.evaluate(() => { Storage.prototype.setItem = () => { throw new DOMException("Full", "QuotaExceededError"); }; });
-  await page.locator("#campaign-message").fill("這是最新還沒存下來的祝福");
+  await editMessage(page, "這是最新還沒存下來的祝福");
   assert.equal(await page.locator("#storage-warning").isVisible(), true);
   await page.locator('[data-view-link="settings"]').click();
   const pending = page.waitForEvent("download");
@@ -321,10 +465,11 @@ test("import rejects unrelated JSON, preserves cancelled imports and round-trips
   const { page } = await setup(t);
   await page.goto(BASE);
   await ready(page);
-  await page.locator("#campaign-message").fill("原本的祝福");
+  await editMessage(page, "原本的祝福");
   await page.locator('[data-view-link="settings"]').click();
   const upload = (value) => page.locator("#import-state-file").setInputFiles({ name: "backup.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(value)) });
   await upload({});
+  await page.waitForFunction(() => document.getElementById("import-state-file").value === "");
   assert.match(await page.locator("#status-box").textContent(), /匯入失敗/);
   assert.equal(await page.evaluate((key) => JSON.parse(localStorage.getItem(key)).campaign.message, STATE_KEY), "原本的祝福");
   const backup = await page.evaluate(() => window.ZaoanApp.getState());
@@ -335,6 +480,7 @@ test("import rejects unrelated JSON, preserves cancelled imports and round-trips
   backup.dailyReplies.repliedContactIds = ["c1"];
   page.once("dialog", (dialog) => dialog.dismiss());
   await upload(backup);
+  await page.waitForFunction(() => document.getElementById("import-state-file").value === "");
   assert.equal(await page.evaluate((key) => JSON.parse(localStorage.getItem(key)).campaign.message, STATE_KEY), "原本的祝福");
   page.once("dialog", (dialog) => dialog.accept());
   await Promise.all([page.waitForEvent("load"), upload({ app: "zaoan-hub", schemaVersion: 1, state: backup })]);
@@ -354,7 +500,7 @@ test("shared-device mode moves the current draft out of permanent storage", asyn
   await page.goto(BASE);
   await ready(page);
   await addContactForReply(page);
-  await page.locator("#campaign-message").fill("共用電腦上的祝福");
+  await editMessage(page, "共用電腦上的祝福");
   await page.locator('[data-view-link="settings"]').click();
   page.once("dialog", (dialog) => dialog.accept());
   await Promise.all([page.waitForEvent("load"), page.locator("#privacy-mode-button").click()]);
@@ -369,7 +515,7 @@ test("a stale tab cannot restore data removed by another tab's shared-device swi
   const { context, page } = await setup(t);
   await page.goto(BASE);
   await ready(page);
-  await page.locator("#campaign-message").fill("原本的裝置草稿");
+  await editMessage(page, "原本的裝置草稿");
   const second = await context.newPage();
   await second.goto(BASE);
   await ready(second);
@@ -377,7 +523,7 @@ test("a stale tab cannot restore data removed by another tab's shared-device swi
   second.once("dialog", (dialog) => dialog.accept());
   await Promise.all([second.waitForEvent("load"), second.locator("#privacy-mode-button").click()]);
   await ready(second);
-  await page.locator("#campaign-message").fill("舊分頁的新輸入");
+  await editMessage(page, "舊分頁的新輸入");
   assert.match(await page.locator("#storage-warning").textContent(), /其他分頁/);
   assert.equal(await page.evaluate((key) => localStorage.getItem(key), STATE_KEY), null);
 });
@@ -395,11 +541,16 @@ test("verified offline shell includes the guide and does not delete other apps' 
   const keys = await page.evaluate(() => caches.keys());
   assert.ok(keys.includes("unrelated-app"));
   assert.ok(keys.includes("zaoan-hub-shell:/another-app/:v1"));
-  await page.locator("#campaign-message").fill("離線也保留的祝福");
+  await editMessage(page, "離線也保留的祝福");
   await context.setOffline(true);
   await page.reload();
   await ready(page);
   assert.equal(await page.locator("#campaign-message").inputValue(), "離線也保留的祝福");
+  for (let index = 0; index < 3; index++) {
+    await page.locator("#next-greeting-button").click();
+    await ready(page);
+    assert.notEqual(await page.locator("#preview-canvas").getAttribute("data-background"), "fallback");
+  }
   await page.goto(new URL("guide.html", BASE).href);
   assert.equal(await page.locator(".guide-step").count(), 3);
   await page.waitForFunction(() => document.getElementById("offline-badge").textContent === "已準備好離線使用");
@@ -421,7 +572,7 @@ test("subdirectory releases stay coherent until accepted; failed installs retain
       let body = await fs.readFile(path.join(appDir, name));
       if (name === "sw.js") body = Buffer.from(body.toString().replace(/const CACHE_VERSION = "[^"]+";/, `const CACHE_VERSION = "fixture-${release}";`));
       if (name.endsWith(".html")) body = Buffer.from(body.toString().replace("<body>", `<body data-release="${release}">`));
-      const type = name.endsWith(".js") ? "application/javascript" : name.endsWith(".css") ? "text/css" : name.endsWith(".svg") ? "image/svg+xml" : name.endsWith(".webmanifest") ? "application/manifest+json" : "text/html";
+      const type = name.endsWith(".js") ? "application/javascript" : name.endsWith(".css") ? "text/css" : name.endsWith(".png") ? "image/png" : name.endsWith(".svg") ? "image/svg+xml" : name.endsWith(".webmanifest") ? "application/manifest+json" : "text/html";
       response.writeHead(200, { "Content-Type": `${type}; charset=utf-8`, "Cache-Control": "no-store" });
       response.end(body);
     } catch { response.writeHead(500).end(); }
@@ -437,7 +588,7 @@ test("subdirectory releases stay coherent until accepted; failed installs retain
   await page.goto(url);
   await ready(page);
   await page.waitForFunction(() => document.getElementById("offline-badge").textContent === "已準備好離線使用");
-  await page.locator("#campaign-message").fill("跨版本保留這句祝福");
+  await editMessage(page, "跨版本保留這句祝福");
   const editingTab = await page.context().newPage();
   await editingTab.goto(url);
   await ready(editingTab);
@@ -504,7 +655,7 @@ test("legacy network-HTML/cache-first-script clients can upgrade without clearin
       if (legacy && name === "index.html") body = Buffer.from('<!doctype html><html><body><h1>Legacy shell</h1><script src="./pwa.js"></script></body></html>');
       if (legacy && name === "pwa.js") body = Buffer.from('navigator.serviceWorker.register("./sw.js");');
       if (legacy && ["app.js", "privacy.js", "data-transfer.js"].includes(name)) body = Buffer.from("/* Legacy app with no ZaoanApp interface. */");
-      const type = name.endsWith(".js") ? "application/javascript" : name.endsWith(".css") ? "text/css" : name.endsWith(".svg") ? "image/svg+xml" : name.endsWith(".webmanifest") ? "application/manifest+json" : "text/html";
+      const type = name.endsWith(".js") ? "application/javascript" : name.endsWith(".css") ? "text/css" : name.endsWith(".png") ? "image/png" : name.endsWith(".svg") ? "image/svg+xml" : name.endsWith(".webmanifest") ? "application/manifest+json" : "text/html";
       response.writeHead(200, { "Content-Type": `${type}; charset=utf-8`, "Cache-Control": "no-store" }).end(body);
     } catch { response.writeHead(500).end(); }
   });

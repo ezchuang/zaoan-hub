@@ -29,6 +29,7 @@
   let shareFile = null;
   let previewVersion = 0;
   let sharing = false;
+  const imageCache = new Map();
   const state = loadState();
 
   const elements = {
@@ -57,6 +58,9 @@
     copyButton: document.getElementById("copy-button"),
     shareResult: document.getElementById("share-result"),
     shareHelp: document.getElementById("share-help"),
+    nextGreetingButton: document.getElementById("next-greeting-button"),
+    greetingEditor: document.getElementById("greeting-editor"),
+    artworkStatus: document.getElementById("artwork-status"),
     receivedPicker: document.getElementById("received-picker"),
     replyChecklist: document.getElementById("reply-checklist"),
     dailyRepliesCount: document.getElementById("daily-replies-count"),
@@ -83,20 +87,34 @@
     elements.contactForm.addEventListener("submit", handleAddContact);
     elements.groupForm.addEventListener("submit", handleAddGroup);
     elements.campaignForm.addEventListener("input", handleCampaignInput);
+    elements.campaignGroup.addEventListener("input", handleCampaignInput);
+    document.getElementById("campaign-title").addEventListener("input", handleCampaignInput);
+    document.getElementById("add-contact-shortcut").addEventListener("click", () => document.getElementById("contact-name").focus());
     elements.shareButton.addEventListener("click", handleShare);
     elements.exportButton.addEventListener("click", handleExport);
     elements.downloadButton.addEventListener("click", handleDownload);
     elements.copyButton.addEventListener("click", handleCopy);
     elements.receivedPicker.addEventListener("change", handleDailyToggle);
     elements.replyChecklist.addEventListener("change", handleDailyToggle);
-    document.getElementById("show-replies-button").addEventListener("click", () => {
-      refreshDailyView();
-      document.getElementById("daily-replies-title").focus();
+    elements.nextGreetingButton.addEventListener("click", () => {
+      if (sharing) return;
+      window.ZaoanGreetings.next(state);
+      fillCampaignFields();
+      persistState();
+      setShareStatus("");
+      updatePreview();
+    });
+    document.getElementById("use-daily-button").addEventListener("click", () => {
+      if (sharing) return;
+      if (state.greeting.mode === "custom" && !window.confirm("改用今日推薦會取代目前的祝福文字，署名與名單會保留。確定更換嗎？")) return;
+      window.ZaoanGreetings.apply(state);
+      fillCampaignFields();
+      persistState();
+      updatePreview();
     });
     elements.prepareRepliesButton.addEventListener("click", () => {
       if (refreshDailyView(true)) return;
-      document.getElementById("today-title").focus();
-      elements.previewCanvas.scrollIntoView({ block: "start" });
+      window.location.hash = "today";
     });
     const refreshWhenVisible = () => { if (!document.hidden) refreshDailyView(true); };
     window.addEventListener("focus", refreshWhenVisible);
@@ -104,7 +122,7 @@
     document.addEventListener("visibilitychange", refreshWhenVisible);
     window.setInterval(refreshWhenVisible, 60000);
     document.getElementById("edit-message-button").addEventListener("click", () => {
-      document.getElementById("campaign-message").focus();
+      openGreetingEditor();
       document.getElementById("campaign-message").scrollIntoView({ block: "center" });
     });
     elements.campaignForm.addEventListener("submit", (event) => event.preventDefault());
@@ -122,6 +140,7 @@
     document.querySelectorAll("[data-message]").forEach((button) => {
       button.addEventListener("click", () => {
         state.campaign.message = button.dataset.message;
+        state.greeting.mode = "custom";
         document.getElementById("campaign-message").value = state.campaign.message;
         persistState();
         updatePreview();
@@ -149,6 +168,11 @@
       document.getElementById(`${view}-title`).focus({ preventScroll: true });
       window.scrollTo(0, 0);
     }
+  }
+
+  function openGreetingEditor() {
+    elements.greetingEditor.open = true;
+    document.getElementById("campaign-message").focus();
   }
 
   function emptyState() {
@@ -198,6 +222,7 @@
 
   function render() {
     window.ZaoanState.refreshDailyReplies(state);
+    window.ZaoanGreetings.refresh(state);
     renderContacts();
     renderGroups();
     renderGroupPickers();
@@ -208,10 +233,16 @@
   }
 
   function refreshDailyView(announce = false) {
-    if (!window.ZaoanState.refreshDailyReplies(state)) return false;
+    const dayChanged = window.ZaoanState.refreshDailyReplies(state);
+    const greetingChanged = !sharing && !elements.campaignForm.contains(document.activeElement) && window.ZaoanGreetings.refresh(state);
+    if (!dayChanged && !greetingChanged) return false;
     renderDailyReplies();
+    if (greetingChanged) {
+      fillCampaignFields();
+      updatePreview();
+    }
     persistState();
-    if (announce) elements.statusBox.textContent = "已換日，今天的回覆勾記重新開始。親友名單與祝福草稿都還在。";
+    if (announce && window.location.hash === "#contacts") elements.statusBox.textContent = "已換日，今天的回覆勾記重新開始。親友名單與手寫祝福都還在。";
     return true;
   }
 
@@ -237,8 +268,6 @@
       ? `待回覆：${pending.map((id) => findContact(id).name).join("、")}`
       : daily.receivedContactIds.length ? "今天勾記的對象都已手動標記回覆；是否送達仍以 LINE 為準。" : "";
     elements.prepareRepliesButton.disabled = pending.length === 0;
-    document.getElementById("show-replies-button").textContent = pending.length
-      ? `查看回覆備忘 · 還有 ${pending.length} 位` : "查看今天的回覆備忘";
   }
 
   function handleDailyToggle(event) {
@@ -506,6 +535,7 @@
 
     if (target.id === "campaign-message") {
       state.campaign.message = target.value;
+      state.greeting.mode = "custom";
     }
 
     if (target.id === "campaign-group") {
@@ -619,53 +649,49 @@
       .map((recipient) => `<li>${escapeHtml(recipient.name)}</li>`)
       .join("");
 
-    drawPreview();
+    const background = window.ZaoanGreetings.backgrounds.find((item) => item.id === state.greeting.backgroundId);
+    document.getElementById("greeting-label").textContent = `${state.greeting.mode === "daily" ? "今日推薦" : "你的祝福"} · ${background.label}`;
+    document.getElementById("recommendation-help").textContent = state.greeting.mode === "daily"
+      ? "每天自動搭配新的推薦組合。署名會保留；手動修改祝福後，就不會被換日覆蓋。"
+      : "已保留你的祝福，換日不會更動；「換一張」只換背景。想重新自動搭配，可改用今日推薦。";
     prepareShareFile();
   }
 
-  function drawPreview() {
+  function drawPreview(background) {
     const canvas = elements.previewCanvas;
     const context = canvas.getContext("2d");
     const width = canvas.width;
     const height = canvas.height;
 
-    const gradient = context.createLinearGradient(0, 0, width, height);
-    gradient.addColorStop(0, "#0b6e4f");
-    gradient.addColorStop(0.55, "#1d8a74");
-    gradient.addColorStop(1, "#efb11d");
-
-    context.fillStyle = gradient;
+    context.fillStyle = "#f4f1e5";
     context.fillRect(0, 0, width, height);
-
-    context.fillStyle = "rgba(255,255,255,0.13)";
-    context.beginPath();
-    context.arc(width * 0.85, height * 0.14, 120, 0, Math.PI * 2);
-    context.fill();
-
-    context.fillStyle = "rgba(255,255,255,0.12)";
-    context.beginPath();
-    context.arc(width * 0.18, height * 0.82, 180, 0, Math.PI * 2);
-    context.fill();
-
-    context.fillStyle = "#fff8ea";
-    context.font = "bold 120px 'Noto Sans TC', 'PingFang TC', sans-serif";
-    context.fillText("早安", 90, 190);
+    if (background) context.drawImage(background, 0, 0, width, height);
+    const veil = context.createLinearGradient(0, 0, width, 0);
+    veil.addColorStop(0, "rgba(255,253,243,0.88)");
+    veil.addColorStop(0.48, "rgba(255,253,243,0.72)");
+    veil.addColorStop(0.76, "rgba(255,253,243,0)");
+    context.fillStyle = veil;
+    context.fillRect(0, 0, width, height);
+    canvas.dataset.background = background ? state.greeting.backgroundId : "fallback";
+    context.fillStyle = "#244e3d";
+    context.font = "bold 124px 'Noto Serif TC', 'Songti TC', 'PMingLiU', serif";
+    context.fillText("早安", 80, 192);
 
     const layout = (size) => {
       context.font = `600 ${size}px 'Noto Sans TC', 'PingFang TC', sans-serif`;
-      return wrapText(context, state.campaign.message, width - 184);
+      return wrapText(context, state.campaign.message, 620);
     };
-    let fontSize = 64;
+    let fontSize = 76;
     let lines = layout(fontSize);
-    if (lines.length * fontSize * 1.38 > 252) {
+    if (lines.length * fontSize * 1.38 > 330) {
       // Find a readable fit without remeasuring the entire message at every size.
       let low = 18;
-      let high = 62;
+      let high = 74;
       fontSize = low;
       while (low <= high) {
         const size = Math.floor((low + high) / 4) * 2;
         const candidate = layout(size);
-        if (candidate.length * size * 1.38 <= 252) {
+        if (candidate.length * size * 1.38 <= 330) {
           fontSize = size;
           low = size + 2;
         } else {
@@ -674,19 +700,47 @@
       }
       lines = layout(fontSize);
     }
-    const maxLines = Math.floor(252 / (fontSize * 1.38));
+    const maxLines = Math.floor(330 / (fontSize * 1.38));
     const visibleLines = lines.slice(0, maxLines);
     if (lines.length > maxLines) {
       visibleLines[maxLines - 1] = visibleLines[maxLines - 1].slice(0, -1) + "…";
     }
-    visibleLines.forEach((line, index) => context.fillText(line, 92, 262 + index * fontSize * 1.38));
+    visibleLines.forEach((line, index) => context.fillText(line, 84, 302 + index * fontSize * 1.38));
     document.getElementById("message-hint").textContent = lines.length > maxLines
       ? "文字太長，圖片末尾已省略。請縮短祝福，或另按「複製祝福文字」取得全文。"
       : fontSize < 32 ? "文字較多，圖上的字會縮小。短一點的祝福更容易閱讀。" : "修改文字，圖片會一起更新。";
 
-    context.fillStyle = "#fff8ea";
-    context.font = "700 52px 'Noto Sans TC', 'PingFang TC', sans-serif";
-    if (state.campaign.sender.trim()) context.fillText(`來自 ${state.campaign.sender.trim()}`, 92, 558, width - 184);
+    if (state.campaign.sender.trim()) {
+      context.fillStyle = "rgba(255,253,243,0.85)";
+      context.fillRect(64, 666, width - 128, 84);
+      context.fillStyle = "#244e3d";
+      context.font = "700 48px 'Noto Sans TC', 'PingFang TC', sans-serif";
+      context.fillText(`來自 ${state.campaign.sender.trim()}`, 84, 724, width - 168);
+    }
+  }
+
+  function loadBackground(id) {
+    if (imageCache.has(id)) return imageCache.get(id);
+    const asset = window.ZaoanGreetings.backgrounds.find((item) => item.id === id);
+    const pending = new Promise((resolve) => {
+      const image = new Image();
+      const finish = (value) => {
+        window.clearTimeout(timeout);
+        image.onload = null;
+        image.onerror = null;
+        if (!value) image.removeAttribute("src");
+        resolve(value);
+      };
+      const timeout = window.setTimeout(() => finish(null), 6000);
+      image.onload = () => finish(image);
+      image.onerror = () => finish(null);
+      image.src = asset.path;
+    }).then((image) => {
+      if (!image) imageCache.delete(id);
+      return image;
+    });
+    imageCache.set(id, pending);
+    return pending;
   }
 
   async function prepareShareFile() {
@@ -694,6 +748,12 @@
     shareFile = null;
     updateActionButtons();
     try {
+      if (!imageCache.has(state.greeting.backgroundId)) drawPreview(null);
+      const background = await loadBackground(state.greeting.backgroundId);
+      if (version !== previewVersion) return;
+      drawPreview(background);
+      elements.artworkStatus.hidden = Boolean(background);
+      elements.artworkStatus.textContent = background ? "" : "背景暫時無法載入，已使用簡易底圖，仍可分享。";
       const file = await canvasToFile(elements.previewCanvas, "zaoan-greeting.png");
       if (version !== previewVersion) return;
       shareFile = file;
@@ -729,6 +789,7 @@
       await navigator.clipboard.writeText(getGreetingText());
       setShareStatus("已複製祝福與署名。到 LINE 長按輸入框，再選「貼上」。");
     } catch (error) {
+      openGreetingEditor();
       document.getElementById("campaign-message").focus();
       document.getElementById("campaign-message").select();
       setShareStatus("無法自動複製。已選取祝福文字，請長按或使用複製快捷鍵；署名需另外複製。");
@@ -750,8 +811,9 @@
   function updateActionButtons() {
     elements.shareButton.disabled = sharing || !shareFile;
     elements.downloadButton.disabled = sharing || !shareFile;
+    elements.nextGreetingButton.disabled = sharing;
     const nativeShare = shareFile && canShareFiles([shareFile]);
-    elements.shareButton.textContent = sharing ? "分享面板使用中…" : !shareFile ? "正在準備圖片…" : nativeShare ? "分享圖片・下一步選 LINE" : "下載早安圖，再到 LINE 傳送";
+    elements.shareButton.textContent = sharing ? "分享面板使用中…" : !shareFile ? "正在準備圖片…" : nativeShare ? "分享圖片" : "下載圖片";
     if (shareFile) elements.shareHelp.textContent = nativeShare
       ? "下一步：選 LINE → 選親友 → 在 LINE 送出。"
       : "這個瀏覽器無法直接分享圖片，下載後仍可自行傳送。";

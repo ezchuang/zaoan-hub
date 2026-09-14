@@ -46,7 +46,15 @@ small { font-size: .8rem; font-weight: 400; color: var(--muted); }
 .page-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin: 30px 0 24px; }
 .eyebrow { font-size: .8rem; color: var(--muted); letter-spacing: .06em; margin-bottom: 8px; }
 .quiet-label { color: var(--muted); font-size: .8rem; }
-.workspace { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 28px; align-items: start; }
+#today { max-width: 780px; margin-inline: auto; }
+.workspace { display: grid; gap: 18px; }
+.primary-actions { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; }
+.primary-actions .share-button { font-size: 1rem; }
+.composer > summary { padding-block: 0; display: block; }
+.composer[open] > summary { margin-bottom: 22px; }
+.extra-sharing { margin-top: 0; padding-block: 12px; }
+.extra-sharing summary { font-size: .89rem; }
+#contacts > .management-grid { margin-top: 24px; }
 .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 26px; min-width: 0; }
 .preview-panel { min-width: 0; background: #e8edde; padding: 20px; border-radius: var(--radius); border: 1px solid #d6ddc9; }
 .preview-label { display: flex; flex-wrap: wrap; gap: 4px 10px; justify-content: space-between; font-size: .8rem; color: #48603e; margin-bottom: 14px; }

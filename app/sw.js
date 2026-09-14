@@ -1,10 +1,11 @@
 const CACHE_PREFIX = `zaoan-hub-shell:${new URL(self.registration.scope).pathname}:`;
-const CACHE_VERSION = "v8";
+const CACHE_VERSION = "v9";
 const CACHE_NAME = `${CACHE_PREFIX}${CACHE_VERSION}`;
 const APP_SHELL_PATHS = [
   "./", "./index.html", "./guide.html", "./styles.css", "./storage.js", "./state.js",
   "./app.js", "./data-transfer.js", "./privacy.js", "./guide.js", "./pwa.js", "./legacy-upgrade.js",
-  "./manifest.webmanifest", "./icon.svg"
+  "./manifest.webmanifest", "./icon.svg", "./greetings.js",
+  "./morning-flowers.png", "./morning-lake.png", "./morning-tea.png"
 ];
 const APP_SHELL_URLS = new Set(APP_SHELL_PATHS.map((path) => new URL(path, self.registration.scope).href));
 const NAVIGATION_URLS = new Set(["./", "./index.html", "./guide.html"].map((path) => new URL(path, self.registration.scope).href));

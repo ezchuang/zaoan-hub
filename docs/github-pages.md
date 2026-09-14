@@ -41,7 +41,7 @@ Fork 不會自動收到上游更新，部署者需要自行同步與重新發布
 
 ## 驗證
 
-`node --test tests/state.test.cjs tests/pages.test.cjs` 不需要額外套件，會檢查資料驗證、相對資源路徑、manifest、離線檔案與公開 artifact 範圍。瀏覽器測試另涵蓋子目錄部署和離線更新。
+`node --test tests/state.test.cjs tests/pages.test.cjs tests/greetings.test.cjs` 不需要額外套件，會檢查資料驗證、每日推薦、預製背景、相對資源路徑、manifest、離線檔案與公開 artifact 範圍。瀏覽器測試另涵蓋子目錄部署和離線更新。
 
 GitHub Actions 實際執行、Pages 是否啟用及真機 LINE 分享，需要部署者完成後另外驗收；本機測試通過不代表網站已公開。
 

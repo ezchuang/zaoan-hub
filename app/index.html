@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'none'; object-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src 'self'; font-src 'self'; manifest-src 'self'; worker-src 'self'; form-action 'self'">
   <meta name="theme-color" content="#0b6e4f">
-  <meta name="description" content="寫一句祝福，準備早安圖，再用自己的 LINE 分享給親友。名單與草稿留在你的裝置。">
+  <meta name="description" content="打開就有早安圖，換一張、加上署名，再用自己的 LINE 分享給親友。">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="早安小幫手">
@@ -24,7 +24,6 @@
     </header>
     <nav class="app-nav" aria-label="主要選單">
       <a href="#today" data-view-link="today" aria-current="page">今日早安</a>
-      <a href="#contacts" data-view-link="contacts">我的名單</a>
       <a href="#settings" data-view-link="settings">設定與備份</a>
     </nav>
     <p id="storage-warning" class="notice warning" role="alert" hidden></p>
@@ -33,51 +32,54 @@
     <noscript><p class="notice warning">需要開啟 JavaScript 才能製作圖片與儲存名單。安裝說明仍可閱讀。</p></noscript>
     <main id="main" tabindex="-1">
       <section id="today" data-view aria-labelledby="today-title">
-        <div class="page-heading"><div><p class="eyebrow" id="today-date">每天一點心意</p><h1 id="today-title" tabindex="-1">今天，說聲早安。</h1></div><span class="quiet-label">用自己的 LINE 分享</span></div>
+        <div class="page-heading"><div><p class="eyebrow" id="today-date">每天一點心意</p><h1 id="today-title" tabindex="-1">早安，今天也美好。</h1></div><span class="quiet-label">用自己的 LINE 分享</span></div>
         <div class="workspace">
           <section class="preview-panel" aria-label="圖片與分享">
-            <div class="preview-label"><span>你的早安圖</span><button id="edit-message-button" class="edit-link" type="button">修改祝福</button></div>
-            <canvas id="preview-canvas" width="1200" height="630" role="img" aria-label="早安圖預覽"></canvas>
+            <div class="preview-label"><span id="greeting-label">今天的推薦</span><button id="edit-message-button" class="edit-link" type="button">改文字／署名</button></div>
+            <canvas id="preview-canvas" width="1200" height="800" role="img" aria-label="早安圖預覽"></canvas>
             <p id="preview-summary" class="sr-only"></p>
             <div class="share-actions">
-              <button id="share-button" class="button button-primary share-button" type="button" disabled>正在準備圖片…</button>
+              <div class="primary-actions"><button id="next-greeting-button" class="button button-secondary" type="button">換一張</button><button id="share-button" class="button button-primary share-button" type="button" disabled>正在準備圖片…</button></div>
               <p id="share-help" class="helper">下一步：選 LINE → 選親友 → 在 LINE 送出。</p>
-              <div class="secondary-actions"><button id="download-button" class="button button-secondary" type="button" disabled>下載圖片</button><button id="copy-button" class="button button-secondary" type="button">複製祝福文字</button></div>
               <p id="share-result" class="helper" role="status" aria-live="polite"></p>
-              <button id="show-replies-button" class="button button-ghost" type="button">查看今天的回覆備忘</button>
+              <p id="artwork-status" class="helper" role="status" hidden></p>
             </div>
           </section>
-          <form id="campaign-form" class="composer panel">
-            <div class="section-heading"><h2>寫下今天的祝福</h2><span id="draft-status" class="quiet-label">草稿</span></div>
+          <details id="greeting-editor" class="composer panel">
+            <summary>想改文字或署名？ <span class="quiet-label">選填</span></summary>
+            <form id="campaign-form">
+            <div class="section-heading"><h2>留一點自己的心意</h2><span id="draft-status" class="quiet-label">草稿</span></div>
             <label class="field" for="campaign-message"><span>祝福文字</span><textarea id="campaign-message" name="message" rows="3" maxlength="500" aria-describedby="message-hint message-count"></textarea></label>
             <div class="field-footer"><span id="message-hint">修改文字，圖片會一起更新。</span><span id="message-count">0 / 500</span></div>
             <div class="quick-messages" aria-label="快速換一句"><button type="button" class="phrase-button" data-message="早安，祝你今天平安順心、心情愉快。">平安順心</button><button type="button" class="phrase-button" data-message="新的一天，願你健康、快樂，笑容常在。">健康快樂</button><button type="button" class="phrase-button" data-message="早安！天氣多變，出門記得照顧自己。">貼心叮嚀</button></div>
-            <label class="field" for="campaign-sender"><span>你的署名 <small>可不填</small></span><input id="campaign-sender" name="sender" maxlength="20" placeholder="例如：美惠" autocomplete="off"></label>
-            <details class="recipient-details">
-              <summary>今天想問候誰 <span id="selected-count" class="tag">選填</span></summary>
-              <p class="helper">這是給自己看的備忘，不會傳出去，也不會替 LINE 選人。分享時仍要在 LINE 選朋友或群組。</p>
-              <label class="field" for="campaign-group"><span>套用常用名單</span><select id="campaign-group" name="group"></select></label>
-              <div id="campaign-recipients-picker" class="picker-grid"></div>
-              <button id="clear-selection-button" class="button button-ghost" type="button">取消全部勾選</button>
-              <a class="text-link" href="#contacts">管理我的名單</a>
-              <ul id="recipient-preview" class="sr-only"></ul>
-            </details>
-            <details class="advanced-details"><summary>備忘標題 <span class="quiet-label">選填</span></summary><label class="field" for="campaign-title"><span>只用於匯出的備忘名單，不會印在圖片上</span><input id="campaign-title" name="title" maxlength="30"></label></details>
-          </form>
+            <label class="field" for="campaign-sender"><span>你的署名 <small>可不填，設定後會保留</small></span><input id="campaign-sender" name="sender" maxlength="20" placeholder="例如：美惠" autocomplete="off"></label>
+            <p id="recommendation-help" class="helper"></p><button id="use-daily-button" class="button button-ghost" type="button">改用今日推薦</button>
+            </form>
+          </details>
+          <details class="panel extra-sharing"><summary>下載圖片或複製文字</summary><div class="secondary-actions"><button id="download-button" class="button button-secondary" type="button" disabled>下載圖片</button><button id="copy-button" class="button button-secondary" type="button">複製祝福文字</button></div></details>
         </div>
+        <p class="page-note">預製 AI 背景搭配祝福，打開就能分享，不必每天找圖。<br>目前是內建素材輪替，不是每天即時生成新背景。署名在這台裝置合成。</p>
+      </section>
+      <section id="contacts" data-view aria-labelledby="contacts-title" hidden>
+        <div class="page-heading"><div><p class="eyebrow">保留原本的資料，不是分享的必填步驟</p><h1 id="contacts-title" tabindex="-1">備忘工具</h1></div><a class="button button-secondary" href="#today">回去準備早安圖</a></div>
+        <p class="intro">這裡的名單與回覆勾記只供自己參考，不會同步到 LINE。想直接分享圖片，不需要使用這些工具。</p>
+        <details class="panel recipient-details">
+          <summary>今天想問候誰 <span id="selected-count" class="tag">選填</span></summary>
+          <p class="helper">這是給自己看的備忘，不會傳出去，也不會替 LINE 選人。分享時仍要在 LINE 選朋友或群組。</p>
+          <label class="field" for="campaign-group"><span>套用常用名單</span><select id="campaign-group" name="group"></select></label>
+          <div id="campaign-recipients-picker" class="picker-grid"></div>
+          <button id="clear-selection-button" class="button button-ghost" type="button">取消全部勾選</button>
+          <ul id="recipient-preview" class="sr-only"></ul>
+          <label class="field" for="campaign-title"><span>備忘標題，不會印在圖片上</span><input id="campaign-title" name="title" maxlength="30"></label>
+        </details>
         <section id="daily-replies" class="panel daily-replies" aria-labelledby="daily-replies-title">
           <div class="section-heading"><div><p class="eyebrow" id="daily-replies-date"></p><h2 id="daily-replies-title" tabindex="-1">今天的回覆備忘</h2></div><span id="daily-replies-count" class="tag" role="status" aria-live="polite">尚未勾記</span></div>
           <p class="helper">手動記下誰傳來問候；本程式不會讀取 LINE，也不會替你選聊天室。每日勾記依裝置日期重新開始，親友名單與草稿會保留。</p>
           <div class="management-grid">
-            <fieldset><legend>1. 今天收到誰的問候？</legend><div id="received-picker" class="picker-grid"></div><a class="text-link" href="#contacts">新增親友或聊天室備忘</a></fieldset>
+            <fieldset><legend>1. 今天收到誰的問候？</legend><div id="received-picker" class="picker-grid"></div><button id="add-contact-shortcut" class="button button-ghost" type="button">新增親友或聊天室備忘</button></fieldset>
             <div><h3>2. 在 LINE 回覆後，勾記完成</h3><p id="daily-replies-empty" class="empty-state">先在左側或上方勾記收到問候的對象。</p><div id="reply-checklist" class="list-stack"></div><p id="pending-replies" class="helper"></p><button id="prepare-replies-button" class="button button-secondary" type="button" disabled>回去準備圖片</button><p class="helper">最後仍要在 LINE 選人送出。取消分享或只開啟面板，都不會自動標記已回覆。</p></div>
           </div>
         </section>
-        <p class="page-note">不用先建立名單，也能直接分享。圖片在這台裝置製作，不會上傳到伺服器。</p>
-      </section>
-      <section id="contacts" data-view aria-labelledby="contacts-title" hidden>
-        <div class="page-heading"><div><p class="eyebrow">只給自己看的問候備忘</p><h1 id="contacts-title" tabindex="-1">把想念的人，記下來。</h1></div><a class="button button-secondary" href="#today">回去準備早安圖</a></div>
-        <p class="intro">用 LINE 裡的顯示名稱記下朋友或群組，不需要帳號、電話、密碼或聊天室 ID。這裡的名單只用來提醒自己，不會同步到 LINE。</p>
         <div class="management-grid">
           <section class="panel"><div class="section-heading"><h2>親友</h2><span id="contact-count" class="tag">0 位</span></div>
             <form id="contact-form" class="stack-form">
@@ -103,10 +105,11 @@
         </div>
       </section>
     </main>
-    <footer class="app-footer"><span>一點心意，剛剛好。</span><span>Zaoan Hub · 資料留在你的裝置</span></footer>
+    <footer class="app-footer"><a href="#contacts" data-view-link="contacts">備忘工具與舊名單</a><span>Zaoan Hub · 資料留在你的裝置</span></footer>
   </div>
   <script src="./storage.js" defer></script>
   <script src="./state.js" defer></script>
+  <script src="./greetings.js" defer></script>
   <script src="./app.js" defer></script>
   <script src="./data-transfer.js" defer></script>
   <script src="./privacy.js" defer></script>

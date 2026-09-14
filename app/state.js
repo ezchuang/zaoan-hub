@@ -96,6 +96,7 @@
       contacts: normalizedContacts,
       groups: normalizedGroups,
       dailyReplies: normalizeDailyReplies(state.dailyReplies, contactIds),
+      greeting: normalizeGreeting(state.greeting),
       campaign: {
         title: normalizeText(campaign.title ?? "今天的早安圖", 30, "發送標題"),
         sender: normalizeText(campaign.sender ?? "", 20, "署名"),
@@ -123,6 +124,21 @@
 
   function emptyDailyReplies(date = "") {
     return { date, receivedContactIds: [], repliedContactIds: [] };
+  }
+
+  function normalizeGreeting(value) {
+    // A backup predating recommendations must never lose its handwritten message.
+    if (value === undefined) return { mode: "custom", date: "", variant: 0, backgroundId: "flowers" };
+    if (!isRecord(value) || !["daily", "custom"].includes(value.mode)
+      || !["flowers", "lake", "tea"].includes(value.backgroundId)
+      || !Number.isInteger(value.variant) || value.variant < 0 || value.variant > 9999
+      || typeof value.date !== "string") throw new Error("早安圖設定格式不正確");
+    if (value.date !== "") {
+      const parsed = new Date(`${value.date}T00:00:00Z`);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(value.date) || !Number.isFinite(parsed.getTime())
+        || parsed.toISOString().slice(0, 10) !== value.date) throw new Error("早安圖日期不正確");
+    }
+    return { mode: value.mode, date: value.date, variant: value.variant, backgroundId: value.backgroundId };
   }
 
   function normalizeDailyReplies(value, contactIds) {
@@ -190,6 +206,7 @@
       contacts: [],
       groups: [],
       dailyReplies: emptyDailyReplies(),
+      greeting: { mode: "daily", date: "", variant: 0, backgroundId: "flowers" },
       campaign: {
         title: "今天的早安圖",
         sender: "",
@@ -205,6 +222,7 @@
     normalize: normalizeState,
     validatePayloadMetadata,
     refreshDailyReplies,
+    localDateKey,
     createEmpty: createEmptyState
   });
 })();
